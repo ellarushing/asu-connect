@@ -1,0 +1,233 @@
+================================================================================
+APPLY_THIS_TO_SUPABASE.sql - CONTENTS SUMMARY
+================================================================================
+
+FILE LOCATION: /Users/ellarushing/Downloads/asu-connect/APPLY_THIS_TO_SUPABASE.sql
+FILE SIZE: 9.9 KB (297 lines)
+STATUS: Ready to copy-paste into Supabase SQL Editor
+
+================================================================================
+STRUCTURE & CONTENTS
+================================================================================
+
+SECTION 1: HEADER & INSTRUCTIONS (Lines 1-20)
+  - Clear title and usage instructions
+  - 6 simple steps to apply the SQL
+  - Overview of what will be created
+
+SECTION 2: CREATE TABLES (Lines 25-44)
+  4 tables created:
+  
+  1. clubs
+     - id (UUID primary key)
+     - name (text, required)
+     - description (text, optional)
+     - created_by (UUID, FK to auth.users)
+     - created_at, updated_at (timestamps)
+  
+  2. events
+     - id (UUID primary key)
+     - title (text, required)
+     - description (text, optional)
+     - event_date (timestamp, required)
+     - location (text, optional)
+     - club_id (UUID, FK to clubs)
+     - created_by (UUID, FK to auth.users)
+     - created_at, updated_at (timestamps)
+  
+  3. club_members
+     - id (UUID primary key)
+     - club_id (UUID, FK to clubs)
+     - user_id (UUID, FK to auth.users)
+     - role (text, 'admin' or 'member')
+     - joined_at (timestamp)
+     - UNIQUE constraint: (club_id, user_id)
+  
+  4. event_registrations
+     - id (UUID primary key)
+     - event_id (UUID, FK to events)
+     - user_id (UUID, FK to auth.users)
+     - registered_at (timestamp)
+     - UNIQUE constraint: (event_id, user_id)
+
+SECTION 3: CREATE INDEXES (Lines 49-56)
+  8 indexes for query performance:
+  - idx_clubs_created_by (for filtering clubs by creator)
+  - idx_events_club_id (for club event lookup)
+  - idx_events_created_by (for filtering events by creator)
+  - idx_events_event_date (for date range queries)
+  - idx_club_members_club_id (for club member lookup)
+  - idx_club_members_user_id (for user's clubs lookup)
+  - idx_event_registrations_event_id (for event registration lookup)
+  - idx_event_registrations_user_id (for user's registrations lookup)
+
+SECTION 4: ENABLE RLS (Lines 61-64)
+  - ALTER TABLE ... ENABLE ROW LEVEL SECURITY
+  - Applied to: clubs, events, club_members, event_registrations
+
+SECTION 5: RLS POLICIES (Lines 69-240)
+  
+  CLUBS TABLE (4 policies):
+  1. "Clubs are publicly viewable"
+     - SELECT: true (everyone can see)
+  
+  2. "Authenticated users can create clubs"
+     - INSERT: only authenticated users creating their own clubs
+  
+  3. "Club creators can update their clubs"
+     - UPDATE: only club creator can update their club
+  
+  4. "Club creators can delete their clubs"
+     - DELETE: only club creator can delete their club
+
+  EVENTS TABLE (3 policies):
+  1. "Events are publicly viewable"
+     - SELECT: true (everyone can see)
+  
+  2. "Authenticated users can create events"
+     - INSERT: only club creators can create events
+     - Verifies user is the club creator
+  
+  3. "Event creators can update their events"
+     - UPDATE: only event creator can update
+  
+  4. "Event creators can delete their events"
+     - DELETE: only event creator can delete
+
+  CLUB_MEMBERS TABLE (4 policies - WITH RECURSION FIXES):
+  1. "Club members are publicly viewable"
+     - SELECT: true (everyone can see)
+  
+  2. "Users can join clubs"
+     - INSERT: users can add themselves as members
+     - Must have role = 'member'
+  
+  3. "Club creators can add members"
+     - INSERT: club creators can add other members
+     - FIXED: Queries clubs table (not club_members) for authority
+  
+  4. "Club creators can update member roles"
+     - UPDATE: club creators can change member roles
+     - FIXED: Queries clubs table to check authority
+  
+  5. "Club creators can remove members"
+     - DELETE: club creators can remove members
+     - FIXED: Queries clubs table to check authority
+  
+  6. "Users can remove themselves from clubs"
+     - DELETE: users can leave clubs they're in
+
+  EVENT_REGISTRATIONS TABLE (3 policies):
+  1. "Event registrations are publicly viewable"
+     - SELECT: true (everyone can see)
+  
+  2. "Authenticated users can register for events"
+     - INSERT: users can register themselves for events
+  
+  3. "Users can unregister from events"
+     - DELETE: users can remove their registrations
+  
+  4. "Event creators can remove registrations"
+     - DELETE: event creators can remove registrations
+
+SECTION 6: CLOSING COMMENTS (Lines 242-297)
+  - Summary of what was created
+  - Key notes about the setup
+  - Important principles explained
+
+================================================================================
+KEY FIXES IN THIS VERSION
+================================================================================
+
+INFINITE RECURSION - FIXED
+  OLD PROBLEM:
+    club_members policies queried club_members table recursively
+    This caused: "infinite recursion detected" error
+  
+  NEW SOLUTION:
+    club_members policies now query clubs table instead
+    Checks if auth.uid() is the club creator
+    No more circular dependencies
+  
+  AFFECTED POLICIES:
+    - "Club creators can add members"
+    - "Club creators can update member roles"
+    - "Club creators can remove members"
+
+DATA INTEGRITY
+  - All foreign keys cascade on delete
+  - UNIQUE constraints prevent duplicate memberships
+  - Timestamps track creation and updates
+  - Proper role validation for club members
+
+PERFORMANCE
+  - 8 strategic indexes for common queries
+  - Fast lookup by creator, club, event, user
+  - Date range queries optimized
+
+SECURITY
+  - All tables have RLS enabled
+  - Authentication required for modifications
+  - Proper authorization checks
+  - User can only manage their own records
+
+================================================================================
+COLUMN REFERENCE
+================================================================================
+
+clubs table:
+  id              - Unique club identifier
+  name            - Club name
+  description     - Club description
+  created_by      - User who created the club
+  created_at      - When club was created
+  updated_at      - When club was last updated
+
+events table:
+  id              - Unique event identifier
+  title           - Event title
+  description     - Event description
+  event_date      - When the event occurs
+  location        - Where the event is held
+  club_id         - Which club created this event
+  created_by      - User who created the event
+  created_at      - When event was created
+  updated_at      - When event was last updated
+
+club_members table:
+  id              - Unique membership record identifier
+  club_id         - Which club
+  user_id         - Which user
+  role            - 'admin' or 'member'
+  joined_at       - When user joined the club
+
+event_registrations table:
+  id              - Unique registration record identifier
+  event_id        - Which event
+  user_id         - Which user
+  registered_at   - When user registered
+
+================================================================================
+USAGE CHECKLIST
+================================================================================
+
+Before applying:
+  ☐ You have a Supabase project created
+  ☐ You're logged into the correct Supabase account
+  ☐ You have the right project selected
+
+To apply:
+  ☐ Open Supabase SQL Editor
+  ☐ Click "New Query"
+  ☐ Copy entire contents of APPLY_THIS_TO_SUPABASE.sql
+  ☐ Paste into SQL Editor
+  ☐ Click "Run"
+  ☐ Wait for green checkmark
+
+After applying:
+  ☐ Check "Table Editor" to see 4 new tables
+  ☐ Verify all table columns exist
+  ☐ Test app functionality
+  ☐ Verify policies work correctly
+
+================================================================================

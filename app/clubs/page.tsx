@@ -1,13 +1,32 @@
+import Link from "next/link";
 import { AppSidebar } from "@/components/app-sidebar";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { ClubsList } from "@/components/clubs-list";
 
 export default function ClubsPage() {
+
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main>
-        <SidebarTrigger />
-        <div>Clubs Page</div>
+      <main className="w-full">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-background p-4">
+          <div className="flex items-center gap-4">
+            <SidebarTrigger />
+            <h1 className="text-2xl font-bold">Clubs</h1>
+          </div>
+          <Link href="/clubs/create">
+            <Button size="sm" className="gap-2">
+              <Plus className="size-4" />
+              Create Club
+            </Button>
+          </Link>
+        </div>
+
+        <div className="p-6">
+          <ClubsList />
+        </div>
       </main>
     </SidebarProvider>
   );

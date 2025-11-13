@@ -6,6 +6,7 @@ import {
   Search,
   Settings,
   UsersRound,
+  LayoutDashboard,
 } from "lucide-react";
 
 import {
@@ -28,6 +29,11 @@ const items = [
     title: "Home",
     url: "/",
     icon: Home,
+  },
+  {
+    title: "Dashboard",
+    url: "dashboard",
+    icon: LayoutDashboard,
   },
   {
     title: "Clubs",
