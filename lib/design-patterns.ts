@@ -196,23 +196,29 @@ class CommandInvoker {
 // EXPORTS
 // ============================================================================
 
-export {
+export type {
   // Strategy Pattern
   FilterStrategy,
+  // Observer Pattern
+  Observer,
+  // Command Pattern
+  Command,
+  // Types
+  Event,
+};
+
+export {
+  // Strategy Pattern
   FilterByDate,
   FilterByName,
   FilterByPopularity,
   EventFilterContext,
   // Observer Pattern
-  Observer,
   EmailNotifier,
   InAppNotifier,
   EventSubject,
   // Command Pattern
-  Command,
   CreateEventCommand,
   UpdateEventCommand,
   CommandInvoker,
-  // Types
-  Event,
 };

@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -153,7 +152,6 @@ export default function EventDetailPage() {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
       <main className="w-full">
         <SidebarTrigger />
         <div className="container mx-auto p-6 max-w-2xl">

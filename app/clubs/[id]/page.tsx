@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { AppSidebar } from '@/components/app-sidebar';
 import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import {
@@ -150,7 +149,6 @@ export default function ClubDetailPage() {
 
   return (
     <SidebarProvider>
-      <AppSidebar />
       <main className="flex-1 overflow-auto">
         <div className="sticky top-0 z-40 flex items-center gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger />
