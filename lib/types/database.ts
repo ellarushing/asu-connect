@@ -1,0 +1,132 @@
+// Auto-generated types for ASU-Connect database
+// Update these if you modify the schema
+
+export interface Database {
+  public: {
+    Tables: {
+      clubs: {
+        Row: {
+          id: string;
+          name: string;
+          description: string | null;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          name: string;
+          description?: string | null;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          name?: string;
+          description?: string | null;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      events: {
+        Row: {
+          id: string;
+          title: string;
+          description: string | null;
+          event_date: string;
+          location: string | null;
+          club_id: string;
+          created_by: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          title: string;
+          description?: string | null;
+          event_date: string;
+          location?: string | null;
+          club_id: string;
+          created_by: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          title?: string;
+          description?: string | null;
+          event_date?: string;
+          location?: string | null;
+          club_id?: string;
+          created_by?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
+      club_members: {
+        Row: {
+          id: string;
+          club_id: string;
+          user_id: string;
+          role: 'admin' | 'member';
+          joined_at: string;
+        };
+        Insert: {
+          id?: string;
+          club_id: string;
+          user_id: string;
+          role?: 'admin' | 'member';
+          joined_at?: string;
+        };
+        Update: {
+          id?: string;
+          club_id?: string;
+          user_id?: string;
+          role?: 'admin' | 'member';
+          joined_at?: string;
+        };
+      };
+      event_registrations: {
+        Row: {
+          id: string;
+          event_id: string;
+          user_id: string;
+          registered_at: string;
+        };
+        Insert: {
+          id?: string;
+          event_id: string;
+          user_id: string;
+          registered_at?: string;
+        };
+        Update: {
+          id?: string;
+          event_id?: string;
+          user_id?: string;
+          registered_at?: string;
+        };
+      };
+    };
+  };
+}
+
+// Helper types
+export type Club = Database['public']['Tables']['clubs']['Row'];
+export type Event = Database['public']['Tables']['events']['Row'];
+export type ClubMember = Database['public']['Tables']['club_members']['Row'];
+export type EventRegistration = Database['public']['Tables']['event_registrations']['Row'];
+
+export type ClubInsert = Database['public']['Tables']['clubs']['Insert'];
+export type EventInsert = Database['public']['Tables']['events']['Insert'];
+export type ClubMemberInsert = Database['public']['Tables']['club_members']['Insert'];
+export type EventRegistrationInsert = Database['public']['Tables']['event_registrations']['Insert'];
+
+export type ClubUpdate = Database['public']['Tables']['clubs']['Update'];
+export type EventUpdate = Database['public']['Tables']['events']['Update'];
+export type ClubMemberUpdate = Database['public']['Tables']['club_members']['Update'];
+export type EventRegistrationUpdate = Database['public']['Tables']['event_registrations']['Update'];
+
+// Role types
+export type MemberRole = 'admin' | 'member';
