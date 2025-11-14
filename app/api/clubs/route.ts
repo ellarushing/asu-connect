@@ -164,13 +164,13 @@ export async function GET(request: NextRequest) {
     // Create a map of club_id to member count
     const memberCountMap = new Map<string, number>();
     if (memberCounts) {
-      memberCounts.forEach((item: any) => {
+      memberCounts.forEach((item: { club_id: string; count: number }) => {
         memberCountMap.set(item.club_id, item.count || 0);
       });
     }
 
     // Transform clubs to include member count
-    const clubsWithCounts = clubs.map((club: any) => ({
+    const clubsWithCounts = clubs.map((club: Club) => ({
       ...club,
       member_count: memberCountMap.get(club.id) || 0,
     }));
@@ -284,6 +284,21 @@ export async function POST(request: NextRequest) {
     );
 
     const club = await createCommand.execute();
+
+    // Automatically add the club creator as an admin in club_members
+    const { error: membershipError } = await supabase
+      .from('club_members')
+      .insert({
+        club_id: club.id,
+        user_id: user.id,
+        role: 'admin',
+      });
+
+    if (membershipError) {
+      console.error('Failed to add creator as admin:', membershipError);
+      // Don't fail the whole request, but log the error
+      // The club was created successfully, just log the membership issue
+    }
 
     return NextResponse.json(
       { club, message: 'Club created successfully' },

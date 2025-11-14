@@ -12,7 +12,10 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft } from 'lucide-react';
+import { ClubMembershipRequests } from '@/components/club-membership-requests';
+import { createClient } from '@/utils/supabase/client';
 
 interface Club {
   id: string;
@@ -33,6 +36,7 @@ interface Event {
 
 interface Membership {
   role: string;
+  status: string;
 }
 
 export default function ClubDetailPage() {
@@ -47,6 +51,7 @@ export default function ClubDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     fetchClubDetails();
@@ -64,6 +69,13 @@ export default function ClubDetailPage() {
       }
       const clubData = await clubResponse.json();
       setClub(clubData.club);
+
+      // Check if current user is admin (creator of the club)
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user && clubData.club.created_by === user.id) {
+        setIsAdmin(true);
+      }
 
       // Fetch club events
       const eventsResponse = await fetch(`/api/events?club_id=${clubId}`);
@@ -106,6 +118,8 @@ export default function ClubDetailPage() {
 
       const data = await response.json();
       setMembership(data.membership);
+      // Clear action error on success
+      setActionError(null);
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to join club'
@@ -130,6 +144,8 @@ export default function ClubDetailPage() {
       }
 
       setMembership(null);
+      // Clear action error on success
+      setActionError(null);
     } catch (err) {
       setActionError(
         err instanceof Error ? err.message : 'Failed to leave club'
@@ -137,6 +153,28 @@ export default function ClubDetailPage() {
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const getMembershipButtonText = () => {
+    if (actionLoading) {
+      return membership ? 'Leaving...' : 'Submitting...';
+    }
+
+    if (membership) {
+      if (membership.status === 'pending') {
+        return 'Cancel Request';
+      }
+      return 'Leave Club';
+    }
+
+    return 'Request to Join';
+  };
+
+  const getMembershipButtonAction = () => {
+    if (membership) {
+      return handleLeaveClub;
+    }
+    return handleJoinClub;
   };
 
   const formatDate = (dateString: string) => {
@@ -202,36 +240,41 @@ export default function ClubDetailPage() {
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
-                      <CardTitle className="text-3xl mb-2">
-                        {club.name}
-                      </CardTitle>
+                      <div className="flex items-center gap-3 mb-2">
+                        <CardTitle className="text-3xl">
+                          {club.name}
+                        </CardTitle>
+                        {isAdmin && (
+                          <Badge variant="success">Admin</Badge>
+                        )}
+                      </div>
                       <CardDescription>
                         Created on {formatDate(club.created_at)}
                       </CardDescription>
                     </div>
-                    <div>
+                    <div className="flex flex-col items-end gap-2">
                       {actionError && (
-                        <p className="text-destructive text-xs mb-2">
+                        <p className="text-destructive text-xs">
                           {actionError}
                         </p>
                       )}
-                      {membership ? (
-                        <Button
-                          variant="destructive"
-                          onClick={handleLeaveClub}
-                          disabled={actionLoading}
-                          size="sm"
-                        >
-                          {actionLoading ? 'Leaving...' : 'Leave Club'}
-                        </Button>
-                      ) : (
-                        <Button
-                          onClick={handleJoinClub}
-                          disabled={actionLoading}
-                          size="sm"
-                        >
-                          {actionLoading ? 'Joining...' : 'Join Club'}
-                        </Button>
+                      {!isAdmin && (
+                        <div className="flex items-center gap-2">
+                          {membership?.status === 'pending' && (
+                            <Badge variant="warning">Request Pending</Badge>
+                          )}
+                          {membership?.status === 'approved' && (
+                            <Badge variant="success">Member</Badge>
+                          )}
+                          <Button
+                            variant={membership ? 'destructive' : 'default'}
+                            onClick={getMembershipButtonAction()}
+                            disabled={actionLoading}
+                            size="sm"
+                          >
+                            {getMembershipButtonText()}
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -244,6 +287,13 @@ export default function ClubDetailPage() {
                   </CardContent>
                 )}
               </Card>
+
+              {/* Pending Requests Section (Admin Only) */}
+              {isAdmin && (
+                <div className="mb-6">
+                  <ClubMembershipRequests clubId={clubId} />
+                </div>
+              )}
 
               {/* Events Section */}
               <Card>

@@ -29,6 +29,9 @@ interface Event {
   created_by: string;
   created_at: string;
   updated_at: string;
+  category: string | null;
+  is_free: boolean;
+  price: number | null;
 }
 
 interface ApiResponse {
@@ -37,6 +40,8 @@ interface ApiResponse {
 }
 
 type SortOption = "date" | "name" | "popularity";
+type CategoryOption = "all" | "Academic" | "Social" | "Sports" | "Arts" | "Career" | "Community Service" | "Other";
+type PricingOption = "all" | "free" | "paid";
 
 export function EventsList() {
   const formatDate = (dateString: string) => {
@@ -57,14 +62,25 @@ export function EventsList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("date");
+  const [category, setCategory] = useState<CategoryOption>("all");
+  const [pricing, setPricing] = useState<PricingOption>("all");
 
   // Fetch events from API
-  const fetchEvents = async (sortOption: SortOption) => {
+  const fetchEvents = async (sortOption: SortOption, categoryOption: CategoryOption, pricingOption: PricingOption) => {
     try {
       setLoading(true);
       setError(null);
+
+      // Build query params
+      const params = new URLSearchParams();
+      params.append('sortBy', sortOption);
+      if (categoryOption !== 'all') {
+        params.append('category', categoryOption);
+      }
+      params.append('pricing', pricingOption);
+
       const response = await fetch(
-        `/api/events?sortBy=${sortOption}`,
+        `/api/events?${params.toString()}`,
         {
           method: "GET",
           headers: {
@@ -92,19 +108,97 @@ export function EventsList() {
 
   // Initial fetch
   useEffect(() => {
-    fetchEvents(sortBy);
+    fetchEvents(sortBy, category, pricing);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Handle sort change
+  // Handle filter changes
   const handleSortChange = (newSort: SortOption) => {
-    fetchEvents(newSort);
+    setSortBy(newSort);
+    fetchEvents(newSort, category, pricing);
+  };
+
+  const handleCategoryChange = (newCategory: CategoryOption) => {
+    setCategory(newCategory);
+    fetchEvents(sortBy, newCategory, pricing);
+  };
+
+  const handlePricingChange = (newPricing: PricingOption) => {
+    setPricing(newPricing);
+    fetchEvents(sortBy, category, newPricing);
   };
 
   return (
     <>
-      {/* Sort dropdown */}
-      <div className="mb-6 flex justify-end">
+      {/* Filters */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <div className="flex flex-col sm:flex-row gap-3">
+          {/* Category filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                Category: {category === "all" ? "All" : category}
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => handleCategoryChange("all")}>
+                All Categories
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Academic")}>
+                Academic
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Social")}>
+                Social
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Sports")}>
+                Sports
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Arts")}>
+                Arts
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Career")}>
+                Career
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Community Service")}>
+                Community Service
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleCategoryChange("Other")}>
+                Other
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Pricing filter */}
+          <div className="flex gap-2 border rounded-md p-1">
+            <Button
+              variant={pricing === "all" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => handlePricingChange("all")}
+              className="flex-1 sm:flex-none"
+            >
+              All
+            </Button>
+            <Button
+              variant={pricing === "free" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => handlePricingChange("free")}
+              className="flex-1 sm:flex-none"
+            >
+              Free
+            </Button>
+            <Button
+              variant={pricing === "paid" ? "default" : "ghost"}
+              size="sm"
+              onClick={() => handlePricingChange("paid")}
+              className="flex-1 sm:flex-none"
+            >
+              Paid
+            </Button>
+          </div>
+        </div>
+
+        {/* Sort dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" className="gap-2">
@@ -152,7 +246,7 @@ export function EventsList() {
           <Button
             variant="outline"
             className="mt-4"
-            onClick={() => fetchEvents(sortBy)}
+            onClick={() => fetchEvents(sortBy, category, pricing)}
           >
             Try Again
           </Button>
@@ -180,9 +274,25 @@ export function EventsList() {
             <Link key={event.id} href={`/events/${event.id}`}>
               <Card className="h-full cursor-pointer transition-all hover:shadow-lg hover:border-primary/50">
                 <CardHeader>
-                  <CardTitle className="line-clamp-2">
-                    {event.title}
-                  </CardTitle>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <CardTitle className="line-clamp-2 flex-1">
+                      {event.title}
+                    </CardTitle>
+                    <div className="flex flex-col gap-1">
+                      {event.category && (
+                        <span className="inline-flex items-center rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary whitespace-nowrap">
+                          {event.category}
+                        </span>
+                      )}
+                      <span className={`inline-flex items-center rounded-full px-2 py-1 text-xs font-semibold whitespace-nowrap ${
+                        event.is_free
+                          ? "bg-green-100 text-green-800"
+                          : "bg-blue-100 text-blue-800"
+                      }`}>
+                        {event.is_free ? "FREE" : `$${event.price?.toFixed(2)}`}
+                      </span>
+                    </div>
+                  </div>
                   <CardDescription className="line-clamp-2">
                     {event.description || "No description"}
                   </CardDescription>

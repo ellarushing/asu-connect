@@ -24,6 +24,9 @@ interface DatabaseEvent {
   created_by: string;
   created_at: string;
   updated_at: string;
+  category: string | null;
+  is_free: boolean;
+  price: number | null;
 }
 
 // Convert database event to design pattern event
@@ -39,19 +42,36 @@ function toDesignPatternEvent(dbEvent: DatabaseEvent): DesignPatternEvent {
 /**
  * GET /api/events
  * List all events with optional filtering using Strategy pattern
- * Query params: ?sortBy=date|name|popularity
+ * Query params: ?sortBy=date|name|popularity&category=Academic|Social|etc&pricing=free|paid|all
  */
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const sortBy = searchParams.get('sortBy') || 'date';
+    const category = searchParams.get('category');
+    const pricing = searchParams.get('pricing') || 'all';
+
+    // Build query
+    let query = supabase.from('events').select('*');
+
+    // Apply category filter
+    if (category && category !== 'all') {
+      query = query.eq('category', category);
+    }
+
+    // Apply pricing filter
+    if (pricing === 'free') {
+      query = query.eq('is_free', true);
+    } else if (pricing === 'paid') {
+      query = query.eq('is_free', false);
+    }
+
+    // Default ordering
+    query = query.order('event_date', { ascending: true });
 
     // Fetch events from database
-    const { data: events, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('event_date', { ascending: true });
+    const { data: events, error } = await query;
 
     if (error) {
       return NextResponse.json(
@@ -89,7 +109,7 @@ export async function GET(request: NextRequest) {
     );
 
     return NextResponse.json(
-      { events: orderedEvents, sortBy },
+      { events: orderedEvents, sortBy, category, pricing },
       { status: 200 }
     );
   } catch (error) {
@@ -125,7 +145,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { title, description, event_date, location, club_id } = body;
+    const { title, description, event_date, location, club_id, category, is_free, price } = body;
 
     // Validate required fields
     if (!title || !event_date || !club_id) {
@@ -133,6 +153,32 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: title, event_date, club_id' },
         { status: 400 }
       );
+    }
+
+    // Validate category if provided
+    const validCategories = ['Academic', 'Social', 'Sports', 'Arts', 'Career', 'Community Service', 'Other'];
+    if (category && !validCategories.includes(category)) {
+      return NextResponse.json(
+        { error: `Invalid category. Must be one of: ${validCategories.join(', ')}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate pricing
+    const isFree = is_free !== false; // Default to true if not provided
+    if (!isFree) {
+      if (price === undefined || price === null) {
+        return NextResponse.json(
+          { error: 'Price is required for paid events' },
+          { status: 400 }
+        );
+      }
+      if (typeof price !== 'number' || price <= 0) {
+        return NextResponse.json(
+          { error: 'Price must be a positive number' },
+          { status: 400 }
+        );
+      }
     }
 
     // Verify user is a club admin
@@ -160,6 +206,9 @@ export async function POST(request: NextRequest) {
         location: location || null,
         club_id,
         created_by: user.id,
+        category: category || null,
+        is_free: isFree,
+        price: !isFree && price ? price : null,
       })
       .select()
       .single();

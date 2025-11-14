@@ -102,7 +102,7 @@ export function LoginForm() {
       </Card>
       <Card className="w-full max-w-md">
         <CardContent>
-          Don't have an account?{"  "}
+          Don&apos;t have an account?{"  "}
           <Link href={"../signup"} className="text-blue-600">
             Sign up
           </Link>

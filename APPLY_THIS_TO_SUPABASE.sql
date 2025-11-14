@@ -280,6 +280,157 @@ CREATE POLICY "Event creators can remove registrations"
   );
 
 -- ============================================================================
+-- STEP 5: NEW FEATURES - EVENT FILTERS, EVENT FLAGGING, CLUB MEMBERSHIP APPROVAL
+-- ============================================================================
+
+-- ========================================
+-- FEATURE 1: EVENT FILTERS
+-- ========================================
+-- Add category, pricing, and free event support to events table
+
+-- Add category column with constraint
+ALTER TABLE public.events
+ADD COLUMN category TEXT CHECK (category IN (
+  'Academic',
+  'Social',
+  'Sports',
+  'Arts',
+  'Career',
+  'Community Service',
+  'Other'
+));
+
+-- Add pricing columns
+ALTER TABLE public.events
+ADD COLUMN is_free BOOLEAN NOT NULL DEFAULT true,
+ADD COLUMN price DECIMAL(10,2);
+
+-- Add constraint: price must be NULL when is_free=true, must be > 0 when is_free=false
+ALTER TABLE public.events
+ADD CONSTRAINT events_price_check CHECK (
+  (is_free = true AND price IS NULL) OR
+  (is_free = false AND price > 0)
+);
+
+-- Create indexes for filtering performance
+CREATE INDEX idx_events_category ON public.events(category);
+CREATE INDEX idx_events_is_free ON public.events(is_free);
+
+-- ========================================
+-- FEATURE 2: EVENT FLAGGING SYSTEM
+-- ========================================
+-- Allow users to flag events for review by event creators
+
+-- Create event_flags table
+CREATE TABLE public.event_flags (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id UUID NOT NULL REFERENCES public.events(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  reason TEXT NOT NULL,
+  details TEXT,
+  status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'reviewed', 'resolved', 'dismissed')),
+  reviewed_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  reviewed_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  UNIQUE(event_id, user_id)
+);
+
+-- Create indexes for event_flags
+CREATE INDEX idx_event_flags_event_id ON public.event_flags(event_id);
+CREATE INDEX idx_event_flags_user_id ON public.event_flags(user_id);
+CREATE INDEX idx_event_flags_status ON public.event_flags(status);
+
+-- Enable RLS on event_flags
+ALTER TABLE public.event_flags ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policy: Anyone can view flags for events they created OR flags they submitted
+CREATE POLICY "Event flags are viewable by event creator and flag creator"
+  ON public.event_flags
+  FOR SELECT
+  USING (
+    auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.events
+      WHERE id = event_flags.event_id
+      AND created_by = auth.uid()
+    )
+  );
+
+-- RLS Policy: Authenticated users can flag events
+CREATE POLICY "Authenticated users can flag events"
+  ON public.event_flags
+  FOR INSERT
+  WITH CHECK (
+    auth.role() = 'authenticated'
+    AND user_id = auth.uid()
+  );
+
+-- RLS Policy: Only event creator can update flag status
+CREATE POLICY "Event creators can update flag status"
+  ON public.event_flags
+  FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM public.events
+      WHERE id = event_flags.event_id
+      AND created_by = auth.uid()
+    )
+  )
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM public.events
+      WHERE id = event_flags.event_id
+      AND created_by = auth.uid()
+    )
+  );
+
+-- ========================================
+-- FEATURE 3: CLUB MEMBERSHIP APPROVAL
+-- ========================================
+-- Add approval workflow for club membership requests
+
+-- Add status column to club_members table
+ALTER TABLE public.club_members
+ADD COLUMN status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected'));
+
+-- Create index for filtering by status
+CREATE INDEX idx_club_members_status ON public.club_members(status);
+
+-- Update existing members to 'approved' status (grandfather existing memberships)
+UPDATE public.club_members SET status = 'approved';
+
+-- Drop the existing public viewability policy for club_members
+DROP POLICY IF EXISTS "Club members are publicly viewable" ON public.club_members;
+
+-- Create new SELECT policy: Show approved members publicly, but let users see their own requests and club creators see all
+CREATE POLICY "Club members visibility with approval"
+  ON public.club_members
+  FOR SELECT
+  USING (
+    status = 'approved'
+    OR auth.uid() = user_id
+    OR EXISTS (
+      SELECT 1 FROM public.clubs
+      WHERE id = club_members.club_id
+      AND created_by = auth.uid()
+    )
+  );
+
+-- Update the "Users can join clubs" policy to set status as pending by default
+DROP POLICY IF EXISTS "Users can join clubs" ON public.club_members;
+
+CREATE POLICY "Users can request to join clubs"
+  ON public.club_members
+  FOR INSERT
+  WITH CHECK (
+    auth.role() = 'authenticated'
+    AND user_id = auth.uid()
+    AND role = 'member'
+    AND status = 'pending'
+  );
+
+-- ============================================================================
 -- SETUP COMPLETE!
 -- ============================================================================
 --
@@ -287,11 +438,16 @@ CREATE POLICY "Event creators can remove registrations"
 -- indexed, and protected with RLS policies.
 --
 -- KEY NOTES:
--- - All SELECT queries allow public read access
+-- - All SELECT queries allow public read access (with approval workflow for club members)
 -- - User authentication is required for CREATE/UPDATE/DELETE operations
 -- - Club and event creators have special permissions to manage their resources
 -- - The RLS policies prevent infinite recursion by using the parent tables
 --   (clubs, events) for authorization checks instead of child tables
 -- - All foreign keys cascade on delete for data consistency
+--
+-- NEW FEATURES ADDED:
+-- - Event Filters: category, is_free, and price columns with constraints and indexes
+-- - Event Flagging: event_flags table with RLS policies for reporting inappropriate events
+-- - Club Membership Approval: status column with approval workflow (pending/approved/rejected)
 --
 -- ============================================================================
