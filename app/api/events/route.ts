@@ -51,9 +51,15 @@ export async function GET(request: NextRequest) {
     const sortBy = searchParams.get('sortBy') || 'date';
     const category = searchParams.get('category');
     const pricing = searchParams.get('pricing') || 'all';
+    const clubId = searchParams.get('club_id');
 
     // Build query
     let query = supabase.from('events').select('*');
+
+    // Apply club filter - IMPORTANT for showing events only in the club they belong to
+    if (clubId) {
+      query = query.eq('club_id', clubId);
+    }
 
     // Apply category filter
     if (category && category !== 'all') {

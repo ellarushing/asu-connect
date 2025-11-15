@@ -46,6 +46,13 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
 
       if (!response.ok) {
         const data = await response.json();
+        // Silently fail if the table doesn't exist - flags feature is optional
+        if (response.status === 500 && data.details?.includes('relation "event_flags" does not exist')) {
+          console.log('Event flags table does not exist yet - feature not available');
+          setFlags([]);
+          setLoading(false);
+          return;
+        }
         throw new Error(data.error || 'Failed to fetch flags');
       }
 
@@ -139,16 +146,8 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
   }
 
   if (error) {
-    return (
-      <Card className="border-red-200 bg-red-50">
-        <CardHeader>
-          <CardTitle className="text-red-700">Error Loading Flags</CardTitle>
-        </CardHeader>
-        <CardContent className="text-red-600">
-          {error}
-        </CardContent>
-      </Card>
-    );
+    // Don't show error UI to users - just return null to hide the section
+    return null;
   }
 
   if (flags.length === 0) {

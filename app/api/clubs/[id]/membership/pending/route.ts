@@ -59,18 +59,19 @@ export async function GET(
     }
 
     // Get pending membership requests with user info
-    const { data: pendingRequests, error: fetchError } = await supabase
+    // Note: If profiles table doesn't exist, this will fail with a foreign key error
+    // In that case, fall back to fetching just the user_id
+    let pendingRequests: PendingMember[] = [];
+
+    // First, try to get requests with profile data
+    const { data: requestsData, error: fetchError } = await supabase
       .from('club_members')
       .select(`
         id,
         user_id,
         role,
         status,
-        joined_at,
-        profiles:user_id (
-          full_name,
-          email
-        )
+        joined_at
       `)
       .eq('club_id', clubId)
       .eq('status', 'pending')
@@ -80,8 +81,28 @@ export async function GET(
       throw new Error(`Failed to fetch pending requests: ${fetchError.message}`);
     }
 
+    // Now try to enrich with profile data
+    if (requestsData && requestsData.length > 0) {
+      const userIds = requestsData.map((req: any) => req.user_id);
+
+      // Try to fetch profiles (this might fail if table doesn't exist)
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      // Map profiles to requests
+      pendingRequests = requestsData.map((req: any) => {
+        const profile = profilesData?.find((p: any) => p.id === req.user_id);
+        return {
+          ...req,
+          profiles: profile ? { full_name: profile.full_name, email: profile.email } : null
+        };
+      });
+    }
+
     return NextResponse.json({
-      pending_requests: pendingRequests || [],
+      pending_requests: pendingRequests,
     });
   } catch (error) {
     return NextResponse.json(
