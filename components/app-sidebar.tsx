@@ -7,6 +7,7 @@ import {
   Settings,
   UsersRound,
   LayoutDashboard,
+  ShieldCheck,
 } from "lucide-react";
 
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/components/ui/sidebar";
 import { NavUser } from "./nav-user";
 import { createClient } from "@/utils/supabase/server";
+import { checkAdminAccess } from "@/lib/auth/admin";
 
 // Menu items.
 const items = [
@@ -58,9 +60,32 @@ export async function AppSidebar() {
     .eq("user_id", user?.id)
     .single();
 
+  // Check if user is an admin
+  const isAdmin = await checkAdminAccess();
+
   return (
     <Sidebar collapsible="icon">
       <SidebarContent>
+        {/* Admin Section - Only visible to admins */}
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel>Admin</SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild>
+                    <a href="/admin">
+                      <ShieldCheck />
+                      <span>Admin Dashboard</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel>ASU-Connect</SidebarGroupLabel>
           <SidebarGroupContent>

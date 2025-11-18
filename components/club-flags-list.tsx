@@ -5,11 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { CheckCircle, XCircle, Eye, AlertCircle, RefreshCcw } from 'lucide-react';
+import { CheckCircle, XCircle, Eye } from 'lucide-react';
 
-interface EventFlag {
+interface ClubFlag {
   id: string;
-  event_id: string;
+  club_id: string;
   user_id: string;
   user_email: string;
   reason: string;
@@ -22,91 +22,45 @@ interface EventFlag {
   updated_at: string;
 }
 
-interface EventFlagsListProps {
-  eventId: string;
+interface ClubFlagsListProps {
+  clubId: string;
   onStatusUpdate?: () => void;
 }
 
-export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps) {
-  const [flags, setFlags] = useState<EventFlag[]>([]);
+export function ClubFlagsList({ clubId, onStatusUpdate }: ClubFlagsListProps) {
+  const [flags, setFlags] = useState<ClubFlag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [updatingFlagId, setUpdatingFlagId] = useState<string | null>(null);
-  const [tableExists, setTableExists] = useState(true); // Track if the table exists
 
   useEffect(() => {
     fetchFlags();
-  }, [eventId]);
+  }, [clubId]);
 
   const fetchFlags = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`/api/events/${eventId}/flags`);
+      const response = await fetch(`/api/clubs/${clubId}/flags`);
 
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-
-        // Check if the table doesn't exist - look in both error message and details
-        const errorMessage = data.error?.toLowerCase() || '';
-        const errorDetails = data.details?.toLowerCase() || '';
-        const isMissingTable =
-          errorMessage.includes('event_flags') && errorMessage.includes('does not exist') ||
-          errorDetails.includes('relation "event_flags" does not exist') ||
-          errorDetails.includes('table "event_flags" does not exist');
-
+        const data = await response.json();
         // Silently fail if the table doesn't exist - flags feature is optional
-        if (response.status === 500 && isMissingTable) {
-          console.log('[EventFlagsList] Event flags table does not exist - feature not available for this event');
-          console.debug('[EventFlagsList] Error details:', { status: response.status, error: data.error, details: data.details });
+        if (response.status === 500 && data.details?.includes('relation "club_flags" does not exist')) {
+          console.log('Club flags table does not exist yet - feature not available');
           setFlags([]);
-          setTableExists(false); // Mark table as non-existent
           setLoading(false);
-          return null; // Return null to indicate silent failure
+          return;
         }
-
-        // Log error details for debugging
-        console.error('[EventFlagsList] Error fetching flags:', {
-          eventId,
-          status: response.status,
-          error: data.error,
-          details: data.details,
-          timestamp: new Date().toISOString()
-        });
-
-        // Set specific error messages based on status code
-        if (response.status === 404) {
-          setError('Event not found. This event may have been deleted.');
-        } else if (response.status === 403) {
-          setError('You do not have permission to view flags for this event.');
-        } else if (response.status === 401) {
-          setError('You must be logged in to view event flags.');
-        } else if (response.status >= 500) {
-          setError('Unable to load event flags due to a technical issue. Please try again later.');
-        } else {
-          setError(data.error || 'Unable to load event flags. Please try again.');
-        }
-        return;
+        throw new Error(data.error || 'Failed to fetch flags');
       }
 
       const data = await response.json();
       setFlags(data.flags || []);
-      console.debug('[EventFlagsList] Successfully loaded', data.flags?.length || 0, 'flags for event', eventId);
     } catch (err) {
-      console.error('[EventFlagsList] Exception while fetching flags:', {
-        eventId,
-        error: err,
-        errorMessage: err instanceof Error ? err.message : String(err),
-        timestamp: new Date().toISOString()
-      });
-
-      // Network errors or other unexpected issues
-      if (err instanceof TypeError && err.message.includes('fetch')) {
-        setError('Network error. Please check your connection and try again.');
-      } else {
-        setError('An unexpected error occurred while loading flags. Please try again.');
-      }
+      console.error('Error fetching flags:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch flags');
     } finally {
       setLoading(false);
     }
@@ -117,7 +71,7 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
       setUpdatingFlagId(flagId);
       setError(null);
 
-      const response = await fetch(`/api/events/${eventId}/flag`, {
+      const response = await fetch(`/api/clubs/${clubId}/flag`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -174,11 +128,6 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
     });
   };
 
-  // Don't render anything if the table doesn't exist
-  if (!tableExists) {
-    return null;
-  }
-
   if (loading) {
     return (
       <Card>
@@ -197,40 +146,16 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
   }
 
   if (error) {
-    return (
-      <Card className="border-red-200 bg-red-50">
-        <CardHeader>
-          <div className="flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
-            <div className="flex-1">
-              <CardTitle className="text-red-900">Unable to Load Event Flags</CardTitle>
-              <CardDescription className="text-red-700 mt-2">
-                {error}
-              </CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Button
-            onClick={fetchFlags}
-            variant="outline"
-            size="sm"
-            className="border-red-300 text-red-700 hover:bg-red-100"
-          >
-            <RefreshCcw className="w-4 h-4 mr-2" />
-            Try Again
-          </Button>
-        </CardContent>
-      </Card>
-    );
+    // Don't show error UI to users - just return null to hide the section
+    return null;
   }
 
   if (flags.length === 0) {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Event Flags</CardTitle>
-          <CardDescription>No flags have been reported for this event.</CardDescription>
+          <CardTitle>Club Flags</CardTitle>
+          <CardDescription>No flags have been reported for this club.</CardDescription>
         </CardHeader>
       </Card>
     );
@@ -239,9 +164,9 @@ export function EventFlagsList({ eventId, onStatusUpdate }: EventFlagsListProps)
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Event Flags ({flags.length})</CardTitle>
+        <CardTitle>Club Flags ({flags.length})</CardTitle>
         <CardDescription>
-          Review and manage flags reported by users for this event.
+          Review and manage flags reported by users for this club.
         </CardDescription>
       </CardHeader>
       <CardContent>

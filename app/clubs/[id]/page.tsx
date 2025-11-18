@@ -13,9 +13,13 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Flag } from 'lucide-react';
 import { ClubMembershipRequests } from '@/components/club-membership-requests';
+import { ClubFlagDialog } from '@/components/club-flag-dialog';
+import { ClubFlagsList } from '@/components/club-flags-list';
 import { createClient } from '@/utils/supabase/client';
+import { toast } from 'sonner';
+import { Toaster } from '@/components/ui/toast';
 
 interface Club {
   id: string;
@@ -52,6 +56,8 @@ export default function ClubDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [hasUserFlagged, setHasUserFlagged] = useState(false);
 
   useEffect(() => {
     fetchClubDetails();
@@ -92,12 +98,28 @@ export default function ClubDetailPage() {
         const membershipData = await membershipResponse.json();
         setMembership(membershipData.membership);
       }
+
+      // Check if user has already flagged this club
+      await checkUserFlagStatus();
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'An error occurred'
       );
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkUserFlagStatus = async () => {
+    try {
+      // Check if user has already flagged this club
+      const flagResponse = await fetch(`/api/clubs/${clubId}/flag`);
+      if (flagResponse.ok) {
+        const flagData = await flagResponse.json();
+        setHasUserFlagged(flagData.hasFlagged || false);
+      }
+    } catch (err) {
+      console.error('Error checking flag status:', err);
     }
   };
 
@@ -185,8 +207,16 @@ export default function ClubDetailPage() {
     });
   };
 
+  const handleFlagSuccess = () => {
+    toast.success('Club flagged successfully', {
+      description: 'Thank you for reporting. The club creator will review your flag.',
+    });
+    setHasUserFlagged(true);
+  };
+
   return (
     <SidebarProvider>
+      <Toaster />
       <main className="flex-1 overflow-auto">
         <div className="sticky top-0 z-40 flex items-center gap-4 border-b bg-background/95 px-6 py-4 backdrop-blur supports-[backdrop-filter]:bg-background/60">
           <SidebarTrigger />
@@ -259,20 +289,31 @@ export default function ClubDetailPage() {
                         </p>
                       )}
                       {!isAdmin && (
-                        <div className="flex items-center gap-2">
-                          {membership?.status === 'pending' && (
-                            <Badge variant="warning">Request Pending</Badge>
-                          )}
-                          {membership?.status === 'approved' && (
-                            <Badge variant="success">Member</Badge>
-                          )}
+                        <div className="flex flex-col items-end gap-2">
+                          <div className="flex items-center gap-2">
+                            {membership?.status === 'pending' && (
+                              <Badge variant="warning">Request Pending</Badge>
+                            )}
+                            {membership?.status === 'approved' && (
+                              <Badge variant="success">Member</Badge>
+                            )}
+                            <Button
+                              variant={membership ? 'destructive' : 'default'}
+                              onClick={getMembershipButtonAction()}
+                              disabled={actionLoading}
+                              size="sm"
+                            >
+                              {getMembershipButtonText()}
+                            </Button>
+                          </div>
                           <Button
-                            variant={membership ? 'destructive' : 'default'}
-                            onClick={getMembershipButtonAction()}
-                            disabled={actionLoading}
+                            variant="outline"
                             size="sm"
+                            onClick={() => setFlagDialogOpen(true)}
+                            disabled={hasUserFlagged}
                           >
-                            {getMembershipButtonText()}
+                            <Flag className="w-4 h-4 mr-2" />
+                            {hasUserFlagged ? 'Club Flagged' : 'Flag Club'}
                           </Button>
                         </div>
                       )}
@@ -292,6 +333,18 @@ export default function ClubDetailPage() {
               {isAdmin && (
                 <div className="mb-6">
                   <ClubMembershipRequests clubId={clubId} />
+                </div>
+              )}
+
+              {/* Club Flags Section (Admin Only) */}
+              {isAdmin && (
+                <div className="mb-6">
+                  <ClubFlagsList
+                    clubId={clubId}
+                    onStatusUpdate={() => {
+                      toast.success('Flag status updated successfully');
+                    }}
+                  />
                 </div>
               )}
 
@@ -349,6 +402,14 @@ export default function ClubDetailPage() {
             </Card>
           )}
         </div>
+
+        {/* Club Flag Dialog */}
+        <ClubFlagDialog
+          open={flagDialogOpen}
+          onOpenChange={setFlagDialogOpen}
+          clubId={clubId}
+          onSuccess={handleFlagSuccess}
+        />
       </main>
     </SidebarProvider>
   );
