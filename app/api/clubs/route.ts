@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { isAdmin } from '@/lib/auth/admin';
 
 // ============================================================================
 // TYPES
@@ -151,21 +152,23 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Fetch member counts for all clubs in one query
-    const { data: memberCounts, error: memberCountError } = await supabase
+    // Fetch all approved memberships (aggregate functions not allowed in Supabase)
+    const { data: memberships, error: memberCountError } = await supabase
       .from('club_members')
-      .select('club_id, count()');
+      .select('club_id')
+      .eq('status', 'approved');
 
     if (memberCountError) {
       console.error('Database error fetching member counts:', memberCountError);
       // Continue anyway - just use 0 as count
     }
 
-    // Create a map of club_id to member count
+    // Count memberships in application code
     const memberCountMap = new Map<string, number>();
-    if (memberCounts) {
-      memberCounts.forEach((item: { club_id: string; count: number }) => {
-        memberCountMap.set(item.club_id, item.count || 0);
+    if (memberships) {
+      memberships.forEach((membership) => {
+        const count = memberCountMap.get(membership.club_id) || 0;
+        memberCountMap.set(membership.club_id, count + 1);
       });
     }
 
@@ -231,6 +234,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Unauthorized', details: 'You must be logged in to create a club' },
         { status: 401 }
+      );
+    }
+
+    // Check if user is an admin
+    const userIsAdmin = await isAdmin(user.id);
+
+    if (!userIsAdmin) {
+      return NextResponse.json(
+        { error: 'Forbidden', details: 'Only administrators can create clubs' },
+        { status: 403 }
       );
     }
 

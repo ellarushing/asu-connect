@@ -64,7 +64,24 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ event }, { status: 200 });
+    // Check if user is authenticated and registered for this event
+    let isUserRegistered = false;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (user) {
+      const { data: registration } = await supabase
+        .from('event_registrations')
+        .select('id')
+        .eq('event_id', id)
+        .eq('user_id', user.id)
+        .single();
+
+      isUserRegistered = !!registration;
+    }
+
+    return NextResponse.json({ event, isUserRegistered }, { status: 200 });
   } catch (error) {
     console.error(`Error in GET /api/events/[id]:`, error);
     return NextResponse.json(

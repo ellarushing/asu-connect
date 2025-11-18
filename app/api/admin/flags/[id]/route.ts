@@ -31,13 +31,15 @@ export async function GET(
           location,
           created_by
         ),
-        reporter:user_id (
+        reporter:profiles!user_id (
           id,
-          email
+          email,
+          full_name
         ),
-        reviewer:reviewed_by (
+        reviewer:profiles!reviewed_by (
           id,
-          email
+          email,
+          full_name
         )
       `)
       .eq('id', id)
@@ -79,13 +81,15 @@ export async function GET(
           created_by,
           approval_status
         ),
-        reporter:user_id (
+        reporter:profiles!user_id (
           id,
-          email
+          email,
+          full_name
         ),
-        reviewer:reviewed_by (
+        reviewer:profiles!reviewed_by (
           id,
-          email
+          email,
+          full_name
         )
       `)
       .eq('id', id)

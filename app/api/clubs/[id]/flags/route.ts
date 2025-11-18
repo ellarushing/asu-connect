@@ -48,18 +48,10 @@ export async function GET(
       );
     }
 
-    // Get all flags for the club with user information
+    // Get all flags for the club
     const { data: flags, error: flagsError } = await supabase
       .from('club_flags')
-      .select(`
-        *,
-        user:user_id (
-          email
-        ),
-        reviewer:reviewed_by (
-          email
-        )
-      `)
+      .select('*')
       .eq('club_id', id)
       .order('created_at', { ascending: false });
 
@@ -71,17 +63,40 @@ export async function GET(
       );
     }
 
+    // Extract unique user IDs (both reporters and reviewers)
+    const userIds = [
+      ...new Set([
+        ...(flags || []).map(f => f.user_id),
+        ...(flags || []).map(f => f.reviewed_by).filter(Boolean)
+      ])
+    ];
+
+    // Fetch profiles for these users
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError);
+    }
+
+    // Create lookup map for profiles
+    const profileMap = Object.fromEntries(
+      (profiles || []).map(p => [p.id, p])
+    );
+
     // Format the response to include user email in a cleaner format
-    const formattedFlags = flags?.map((flag) => ({
+    const formattedFlags = (flags || []).map((flag) => ({
       id: flag.id,
       club_id: flag.club_id,
       user_id: flag.user_id,
-      user_email: (flag as { user?: { email?: string } }).user?.email || 'Unknown',
+      user_email: profileMap[flag.user_id]?.email || 'Unknown',
       reason: flag.reason,
       details: flag.details,
       status: flag.status,
       reviewed_by: flag.reviewed_by,
-      reviewer_email: (flag as { reviewer?: { email?: string } }).reviewer?.email || null,
+      reviewer_email: flag.reviewed_by ? (profileMap[flag.reviewed_by]?.email || null) : null,
       reviewed_at: flag.reviewed_at,
       created_at: flag.created_at,
       updated_at: flag.updated_at,

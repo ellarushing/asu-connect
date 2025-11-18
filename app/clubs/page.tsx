@@ -4,8 +4,19 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { ClubsList } from "@/components/clubs-list";
+import { createClient } from "@/utils/supabase/server";
+import { isAdmin } from "@/lib/auth/admin";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-export default function ClubsPage() {
+export default async function ClubsPage() {
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getUser();
+  const isAuthenticated = !!data?.user;
+  const userIsAdmin = data?.user ? await isAdmin(data.user.id) : false;
 
   return (
     <SidebarProvider>
@@ -16,12 +27,21 @@ export default function ClubsPage() {
             <SidebarTrigger />
             <h1 className="text-2xl font-bold">Clubs</h1>
           </div>
-          <Link href="/clubs/create">
-            <Button size="sm" className="gap-2">
-              <Plus className="size-4" />
-              Create Club
-            </Button>
-          </Link>
+          {userIsAdmin && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Link href="/clubs/create">
+                  <Button size="sm" className="gap-2">
+                    <Plus className="size-4" />
+                    Create Club
+                  </Button>
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Create a new club (admin only)</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
         </div>
 
         <div className="p-6">
