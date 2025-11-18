@@ -72,17 +72,7 @@ export async function GET(request: NextRequest) {
           reviewed_by,
           reviewed_at,
           created_at,
-          updated_at,
-          event:events (
-            id,
-            title
-          ),
-          reporter:user_id (
-            email
-          ),
-          reviewer:reviewed_by (
-            email
-          )
+          updated_at
         `);
 
       if (status) {
@@ -101,20 +91,48 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      if (eventFlags) {
+      if (eventFlags && eventFlags.length > 0) {
+        // Fetch events for these flags
+        const eventIds = [...new Set(eventFlags.map(f => f.event_id))];
+        const { data: events } = await supabase
+          .from('events')
+          .select('id, title')
+          .in('id', eventIds);
+
+        const eventMap = Object.fromEntries(
+          (events || []).map(e => [e.id, e])
+        );
+
+        // Fetch profiles for these flags
+        const userIds = [
+          ...new Set([
+            ...eventFlags.map(f => f.user_id),
+            ...eventFlags.map(f => f.reviewed_by).filter(Boolean)
+          ])
+        ];
+
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        const profileMap = Object.fromEntries(
+          (profiles || []).map(p => [p.id, p])
+        );
+
         flags.push(
           ...eventFlags.map((flag: any) => ({
             id: flag.id,
             entity_id: flag.event_id,
             entity_type: 'event',
-            entity_title: flag.event?.title || 'Unknown Event',
+            entity_title: eventMap[flag.event_id]?.title || 'Unknown Event',
             user_id: flag.user_id,
-            user_email: flag.reporter?.email || null,
+            user_email: profileMap[flag.user_id]?.email || null,
             reason: flag.reason,
             details: flag.details,
             status: flag.status,
             reviewed_by: flag.reviewed_by,
-            reviewer_email: flag.reviewer?.email || null,
+            reviewer_email: flag.reviewed_by ? (profileMap[flag.reviewed_by]?.email || null) : null,
             reviewed_at: flag.reviewed_at,
             created_at: flag.created_at,
             updated_at: flag.updated_at,
@@ -137,17 +155,7 @@ export async function GET(request: NextRequest) {
           reviewed_by,
           reviewed_at,
           created_at,
-          updated_at,
-          club:clubs (
-            id,
-            name
-          ),
-          reporter:user_id (
-            email
-          ),
-          reviewer:reviewed_by (
-            email
-          )
+          updated_at
         `);
 
       if (status) {
@@ -166,20 +174,48 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      if (clubFlags) {
+      if (clubFlags && clubFlags.length > 0) {
+        // Fetch clubs for these flags
+        const clubIds = [...new Set(clubFlags.map(f => f.club_id))];
+        const { data: clubs } = await supabase
+          .from('clubs')
+          .select('id, name')
+          .in('id', clubIds);
+
+        const clubMap = Object.fromEntries(
+          (clubs || []).map(c => [c.id, c])
+        );
+
+        // Fetch profiles for these flags
+        const userIds = [
+          ...new Set([
+            ...clubFlags.map(f => f.user_id),
+            ...clubFlags.map(f => f.reviewed_by).filter(Boolean)
+          ])
+        ];
+
+        const { data: profiles } = await supabase
+          .from('profiles')
+          .select('id, email, full_name')
+          .in('id', userIds);
+
+        const profileMap = Object.fromEntries(
+          (profiles || []).map(p => [p.id, p])
+        );
+
         flags.push(
           ...clubFlags.map((flag: any) => ({
             id: flag.id,
             entity_id: flag.club_id,
             entity_type: 'club',
-            entity_title: flag.club?.name || 'Unknown Club',
+            entity_title: clubMap[flag.club_id]?.name || 'Unknown Club',
             user_id: flag.user_id,
-            user_email: flag.reporter?.email || null,
+            user_email: profileMap[flag.user_id]?.email || null,
             reason: flag.reason,
             details: flag.details,
             status: flag.status,
             reviewed_by: flag.reviewed_by,
-            reviewer_email: flag.reviewer?.email || null,
+            reviewer_email: flag.reviewed_by ? (profileMap[flag.reviewed_by]?.email || null) : null,
             reviewed_at: flag.reviewed_at,
             created_at: flag.created_at,
             updated_at: flag.updated_at,

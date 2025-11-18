@@ -38,11 +38,11 @@ export function EventCreateForm() {
     price: '',
   });
 
-  // Fetch clubs on component mount
+  // Fetch clubs where user is an admin on component mount
   useEffect(() => {
     const fetchClubs = async () => {
       try {
-        const response = await fetch('/api/clubs');
+        const response = await fetch('/api/clubs/my-admin-clubs');
         if (!response.ok) {
           throw new Error('Failed to fetch clubs');
         }
@@ -180,7 +180,7 @@ export function EventCreateForm() {
         ) : clubs.length === 0 ? (
           <div className="py-8 text-center">
             <p className="text-muted-foreground mb-4">
-              You need to create or join a club before creating an event.
+              You need to be an admin of a club to create events
             </p>
             <Link href="/clubs">
               <Button>Browse Clubs</Button>

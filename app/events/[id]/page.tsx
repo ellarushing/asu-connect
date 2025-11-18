@@ -10,6 +10,7 @@ import { ArrowLeft, MapPin, Calendar, Flag } from 'lucide-react';
 import { Event } from '@/lib/types/database';
 import { EventFlagDialog } from '@/components/event-flag-dialog';
 import { EventFlagsList } from '@/components/event-flags-list';
+import { EventRegistrationsList } from '@/components/event-registrations-list';
 import { Toaster } from '@/components/ui/toast';
 import { toast } from 'sonner';
 import { createClient } from '@/utils/supabase/client';
@@ -53,13 +54,13 @@ export default function EventDetailPage() {
       const data = await response.json();
       setEvent(data.event);
 
+      // Set registration status from API response
+      setIsRegistered(data.isUserRegistered || false);
+
       // Fetch club name
       if (data.event.club_id) {
         fetchClubName(data.event.club_id);
       }
-
-      // Check registration status
-      checkRegistrationStatus();
 
       // Check if user has already flagged
       await checkUserFlagStatus();
@@ -99,19 +100,6 @@ export default function EventDetailPage() {
     }
   };
 
-  const checkRegistrationStatus = async () => {
-    try {
-      const response = await fetch(`/api/events/${eventId}`);
-      if (response.ok) {
-        const data = await response.json();
-        // If we have user info, we can check registration
-        // For now, this will be handled by the registration endpoints
-        setIsRegistered(false);
-      }
-    } catch (err) {
-      console.error('Error checking registration:', err);
-    }
-  };
 
   const checkIfEventCreator = async (eventData: EventWithClub) => {
     try {
@@ -345,6 +333,13 @@ export default function EventDetailPage() {
               </CardContent>
             </Card>
           ) : null}
+
+          {/* Event Registrations Section (for event creators) */}
+          {event && isEventCreator && (
+            <div className="mt-6">
+              <EventRegistrationsList eventId={eventId} />
+            </div>
+          )}
 
           {/* Event Flags Section (for event creators) */}
           {event && isEventCreator && (

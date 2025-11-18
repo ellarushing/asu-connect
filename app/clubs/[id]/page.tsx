@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Flag } from 'lucide-react';
 import { ClubMembershipRequests } from '@/components/club-membership-requests';
+import { ClubMembersList } from '@/components/club-members-list';
 import { ClubFlagDialog } from '@/components/club-flag-dialog';
 import { ClubFlagsList } from '@/components/club-flags-list';
 import { createClient } from '@/utils/supabase/client';
@@ -55,7 +56,7 @@ export default function ClubDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [isCreator, setIsCreator] = useState(false);
   const [flagDialogOpen, setFlagDialogOpen] = useState(false);
   const [hasUserFlagged, setHasUserFlagged] = useState(false);
 
@@ -76,11 +77,11 @@ export default function ClubDetailPage() {
       const clubData = await clubResponse.json();
       setClub(clubData.club);
 
-      // Check if current user is admin (creator of the club)
+      // Check if current user is the creator of the club
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (user && clubData.club.created_by === user.id) {
-        setIsAdmin(true);
+        setIsCreator(true);
       }
 
       // Fetch club events
@@ -274,8 +275,8 @@ export default function ClubDetailPage() {
                         <CardTitle className="text-3xl">
                           {club.name}
                         </CardTitle>
-                        {isAdmin && (
-                          <Badge variant="success">Admin</Badge>
+                        {isCreator && (
+                          <Badge variant="success">Creator</Badge>
                         )}
                       </div>
                       <CardDescription>
@@ -288,7 +289,7 @@ export default function ClubDetailPage() {
                           {actionError}
                         </p>
                       )}
-                      {!isAdmin && (
+                      {!isCreator && (
                         <div className="flex flex-col items-end gap-2">
                           <div className="flex items-center gap-2">
                             {membership?.status === 'pending' && (
@@ -329,15 +330,15 @@ export default function ClubDetailPage() {
                 )}
               </Card>
 
-              {/* Pending Requests Section (Admin Only) */}
-              {isAdmin && (
+              {/* Pending Requests Section (Creator Only) */}
+              {isCreator && (
                 <div className="mb-6">
                   <ClubMembershipRequests clubId={clubId} />
                 </div>
               )}
 
-              {/* Club Flags Section (Admin Only) */}
-              {isAdmin && (
+              {/* Club Flags Section (Creator Only) */}
+              {isCreator && (
                 <div className="mb-6">
                   <ClubFlagsList
                     clubId={clubId}
@@ -347,6 +348,11 @@ export default function ClubDetailPage() {
                   />
                 </div>
               )}
+
+              {/* Members List Section */}
+              <div className="mb-6">
+                <ClubMembersList clubId={clubId} />
+              </div>
 
               {/* Events Section */}
               <Card>
