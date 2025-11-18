@@ -33,6 +33,9 @@ export function EventCreateForm() {
     event_time: '12:00',
     location: '',
     club_id: '',
+    category: 'Social' as const,
+    is_free: true,
+    price: '',
   });
 
   // Fetch clubs on component mount
@@ -75,6 +78,14 @@ export function EventCreateForm() {
     }));
   };
 
+  const handlePricingToggle = (isFree: boolean) => {
+    setFormData((prev) => ({
+      ...prev,
+      is_free: isFree,
+      price: isFree ? '' : prev.price,
+    }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -102,6 +113,14 @@ export function EventCreateForm() {
         throw new Error('Description must be 2000 characters or less');
       }
 
+      // Validate pricing
+      if (!formData.is_free) {
+        const priceNum = parseFloat(formData.price);
+        if (isNaN(priceNum) || priceNum <= 0) {
+          throw new Error('Please enter a valid price greater than 0');
+        }
+      }
+
       // Combine date and time into ISO format
       const eventDateTime = `${formData.event_date}T${formData.event_time}:00`;
 
@@ -117,6 +136,9 @@ export function EventCreateForm() {
           event_date: eventDateTime,
           location: formData.location.trim() || null,
           club_id: formData.club_id,
+          category: formData.category,
+          is_free: formData.is_free,
+          price: formData.is_free ? null : parseFloat(formData.price),
         }),
       });
 
@@ -268,6 +290,71 @@ export function EventCreateForm() {
                 ))}
               </select>
             </div>
+
+            {/* Category Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="category">Category</Label>
+              <select
+                id="category"
+                name="category"
+                value={formData.category}
+                onChange={handleInputChange}
+                disabled={loading}
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm"
+              >
+                <option value="Academic">Academic</option>
+                <option value="Social">Social</option>
+                <option value="Sports">Sports</option>
+                <option value="Arts">Arts</option>
+                <option value="Career">Career</option>
+                <option value="Community Service">Community Service</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
+            {/* Pricing Toggle */}
+            <div className="space-y-2">
+              <Label>Pricing *</Label>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant={formData.is_free ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => handlePricingToggle(true)}
+                  disabled={loading}
+                >
+                  Free
+                </Button>
+                <Button
+                  type="button"
+                  variant={!formData.is_free ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => handlePricingToggle(false)}
+                  disabled={loading}
+                >
+                  Paid
+                </Button>
+              </div>
+            </div>
+
+            {/* Price Input (shown only when Paid is selected) */}
+            {!formData.is_free && (
+              <div className="space-y-2">
+                <Label htmlFor="price">Price ($) *</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  placeholder="Enter price (e.g., 10.00)"
+                  value={formData.price}
+                  onChange={handleInputChange}
+                  required={!formData.is_free}
+                  disabled={loading}
+                />
+              </div>
+            )}
 
             {/* Submit Buttons */}
             <div className="flex gap-3 pt-6">

@@ -6,8 +6,13 @@ import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, MapPin, Calendar, Users } from 'lucide-react';
+import { ArrowLeft, MapPin, Calendar, Flag } from 'lucide-react';
 import { Event } from '@/lib/types/database';
+import { EventFlagDialog } from '@/components/event-flag-dialog';
+import { EventFlagsList } from '@/components/event-flags-list';
+import { Toaster } from '@/components/ui/toast';
+import { toast } from 'sonner';
+import { createClient } from '@/utils/supabase/client';
 
 interface EventWithClub extends Event {
   club?: {
@@ -26,6 +31,10 @@ export default function EventDetailPage() {
   const [loading, setLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [flagDialogOpen, setFlagDialogOpen] = useState(false);
+  const [hasUserFlagged, setHasUserFlagged] = useState(false);
+  const [isEventCreator, setIsEventCreator] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchEvent();
@@ -51,11 +60,30 @@ export default function EventDetailPage() {
 
       // Check registration status
       checkRegistrationStatus();
+
+      // Check if user has already flagged
+      await checkUserFlagStatus();
+
+      // Check if user is event creator
+      await checkIfEventCreator(data.event);
     } catch (err) {
       console.error('Error fetching event:', err);
       setError(err instanceof Error ? err.message : 'Failed to load event');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const checkUserFlagStatus = async () => {
+    try {
+      // Check if user has already flagged this event
+      const flagResponse = await fetch(`/api/events/${eventId}/flag`);
+      if (flagResponse.ok) {
+        const flagData = await flagResponse.json();
+        setHasUserFlagged(flagData.hasFlagged || false);
+      }
+    } catch (err) {
+      console.error('Error checking flag status:', err);
     }
   };
 
@@ -82,6 +110,23 @@ export default function EventDetailPage() {
       }
     } catch (err) {
       console.error('Error checking registration:', err);
+    }
+  };
+
+  const checkIfEventCreator = async (eventData: EventWithClub) => {
+    try {
+      // Get current user from Supabase client
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (user) {
+        setCurrentUserId(user.id);
+        if (eventData.created_by === user.id) {
+          setIsEventCreator(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error checking event creator:', err);
     }
   };
 
@@ -150,8 +195,16 @@ export default function EventDetailPage() {
     });
   };
 
+  const handleFlagSuccess = () => {
+    toast.success('Event flagged successfully', {
+      description: 'Thank you for reporting. The event creator will review your flag.',
+    });
+    setHasUserFlagged(true);
+  };
+
   return (
     <SidebarProvider>
+      <Toaster />
       <main className="w-full">
         <SidebarTrigger />
         <div className="container mx-auto p-6 max-w-2xl">
@@ -188,7 +241,23 @@ export default function EventDetailPage() {
           ) : event ? (
             <Card>
               <CardHeader>
-                <CardTitle className="text-3xl mb-2">{event.title}</CardTitle>
+                <div className="flex items-start justify-between gap-4 mb-2">
+                  <CardTitle className="text-3xl flex-1">{event.title}</CardTitle>
+                  <div className="flex flex-col gap-2">
+                    {event.category && (
+                      <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary whitespace-nowrap">
+                        {event.category}
+                      </span>
+                    )}
+                    <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold whitespace-nowrap ${
+                      event.is_free
+                        ? "bg-green-100 text-green-800"
+                        : "bg-blue-100 text-blue-800"
+                    }`}>
+                      {event.is_free ? "FREE" : `$${event.price?.toFixed(2)}`}
+                    </span>
+                  </div>
+                </div>
                 {clubName && (
                   <CardDescription className="text-lg">
                     Hosted by <span className="font-semibold text-slate-700">{clubName}</span>
@@ -216,6 +285,19 @@ export default function EventDetailPage() {
                       </div>
                     </div>
                   )}
+
+                  {/* Pricing Details */}
+                  {!event.is_free && event.price && (
+                    <div className="flex items-start gap-3">
+                      <div className="w-5 h-5 flex items-center justify-center mt-1 flex-shrink-0">
+                        <span className="text-slate-400">$</span>
+                      </div>
+                      <div>
+                        <p className="text-sm text-slate-600">Price</p>
+                        <p className="font-medium">${event.price.toFixed(2)}</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}
@@ -226,8 +308,8 @@ export default function EventDetailPage() {
                   </div>
                 )}
 
-                {/* Registration Button */}
-                <div className="pt-4 border-t">
+                {/* Registration and Flag Buttons */}
+                <div className="pt-4 border-t space-y-3">
                   {isRegistered ? (
                     <Button
                       variant="destructive"
@@ -246,10 +328,43 @@ export default function EventDetailPage() {
                       {isRegistering ? 'Registering...' : 'Register for Event'}
                     </Button>
                   )}
+
+                  {/* Flag Event Button */}
+                  {!isEventCreator && (
+                    <Button
+                      variant="outline"
+                      onClick={() => setFlagDialogOpen(true)}
+                      disabled={hasUserFlagged}
+                      className="w-full"
+                    >
+                      <Flag className="w-4 h-4 mr-2" />
+                      {hasUserFlagged ? 'Event Flagged' : 'Flag Event'}
+                    </Button>
+                  )}
                 </div>
               </CardContent>
             </Card>
           ) : null}
+
+          {/* Event Flags Section (for event creators) */}
+          {event && isEventCreator && (
+            <div className="mt-6">
+              <EventFlagsList
+                eventId={eventId}
+                onStatusUpdate={() => {
+                  toast.success('Flag status updated successfully');
+                }}
+              />
+            </div>
+          )}
+
+          {/* Flag Dialog */}
+          <EventFlagDialog
+            open={flagDialogOpen}
+            onOpenChange={setFlagDialogOpen}
+            eventId={eventId}
+            onSuccess={handleFlagSuccess}
+          />
         </div>
       </main>
     </SidebarProvider>

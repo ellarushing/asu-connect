@@ -39,7 +39,9 @@ export function ClubsList() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch(`/api/clubs?sortBy=${sortBy}`);
+      const response = await fetch(`/api/clubs?sortBy=${sortBy}`, {
+        cache: 'no-store', // Always fetch fresh data
+      });
 
       if (!response.ok) {
         throw new Error("Failed to fetch clubs");
@@ -56,6 +58,21 @@ export function ClubsList() {
 
   useEffect(() => {
     fetchClubs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortBy]);
+
+  // Refresh clubs when the page becomes visible (user navigates back)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        fetchClubs();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sortBy]);
 

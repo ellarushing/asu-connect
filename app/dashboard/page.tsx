@@ -148,7 +148,7 @@ export default async function DashboardPage() {
           <div className="mb-8">
             <h1 className="text-3xl font-bold mb-2">My Dashboard</h1>
             <p className="text-muted-foreground">
-              Welcome back! Here's an overview of your clubs and registered
+              Welcome back! Here&apos;s an overview of your clubs and registered
               events.
             </p>
           </div>
@@ -203,7 +203,7 @@ export default async function DashboardPage() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-center text-muted-foreground">
-                    You haven't joined any clubs yet.{' '}
+                    You haven&apos;t joined any clubs yet.{' '}
                     <Link href="/clubs" className="text-primary hover:underline">
                       Browse clubs
                     </Link>{' '}
@@ -270,7 +270,7 @@ export default async function DashboardPage() {
               <Card>
                 <CardContent className="pt-6">
                   <p className="text-center text-muted-foreground">
-                    You haven't registered for any events yet.{' '}
+                    You haven&apos;t registered for any events yet.{' '}
                     <Link
                       href="/events"
                       className="text-primary hover:underline"

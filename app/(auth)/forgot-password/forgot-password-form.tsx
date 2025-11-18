@@ -71,7 +71,7 @@ export function ForgotPasswordForm({
           <CardHeader>
             <CardTitle className="text-2xl">Reset Your Password</CardTitle>
             <CardDescription>
-              Type in your email and we'll send you a link to reset your
+              Type in your email and we&apos;ll send you a link to reset your
               password
             </CardDescription>
           </CardHeader>
