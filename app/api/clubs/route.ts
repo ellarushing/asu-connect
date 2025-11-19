@@ -133,10 +133,12 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch all clubs
+    // Fetch only approved clubs for public view
+    // Rejected and pending clubs are not shown to regular users
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
-      .select('*');
+      .select('*')
+      .eq('approval_status', 'approved');
 
     if (clubsError) {
       console.error('Database error fetching clubs:', clubsError);
