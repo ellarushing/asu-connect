@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -345,36 +344,31 @@ export default function AdminFlagsPage() {
 
   if (loading) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <main className="flex-1 w-full">
-          <div className="flex items-center gap-4 p-6 border-b">
-            <SidebarTrigger />
-            <h1 className="text-3xl font-bold">Flagged Content Review</h1>
-          </div>
+      <main className="flex-1 w-full">
+        <div className="flex items-center gap-4 p-6 border-b">
+          <SidebarTrigger />
+          <h1 className="text-3xl font-bold">Flagged Content Review</h1>
+        </div>
 
-          <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => (
-                <Card key={i}>
-                  <CardHeader>
-                    <Skeleton className="h-4 w-20 mb-2" />
-                    <Skeleton className="h-8 w-16" />
-                  </CardHeader>
-                </Card>
-              ))}
-            </div>
-            <Skeleton className="h-64 w-full" />
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            {[...Array(4)].map((_, i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-4 w-20 mb-2" />
+                  <Skeleton className="h-8 w-16" />
+                </CardHeader>
+              </Card>
+            ))}
           </div>
-        </main>
-      </SidebarProvider>
+          <Skeleton className="h-64 w-full" />
+        </div>
+      </main>
     );
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main className="flex-1 w-full">
+    <main className="flex-1 w-full">
         <div className="flex items-center justify-between gap-4 p-6 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger />
@@ -875,6 +869,5 @@ export default function AdminFlagsPage() {
           </DialogContent>
         </Dialog>
       </main>
-    </SidebarProvider>
   );
 }

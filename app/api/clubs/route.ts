@@ -78,10 +78,12 @@ interface Command<T> {
 class CreateClubCommand implements Command<Club> {
   private clubData: ClubCreateInput;
   private userId: string;
+  private approvalStatus: 'pending' | 'approved';
 
-  constructor(clubData: ClubCreateInput, userId: string) {
+  constructor(clubData: ClubCreateInput, userId: string, approvalStatus: 'pending' | 'approved' = 'pending') {
     this.clubData = clubData;
     this.userId = userId;
+    this.approvalStatus = approvalStatus;
   }
 
   async execute(): Promise<Club> {
@@ -93,6 +95,7 @@ class CreateClubCommand implements Command<Club> {
         name: this.clubData.name,
         description: this.clubData.description || null,
         created_by: this.userId,
+        approval_status: this.approvalStatus,
       })
       .select()
       .single();
@@ -237,16 +240,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is an admin
-    const userIsAdmin = await isAdmin(user.id);
-
-    if (!userIsAdmin) {
-      return NextResponse.json(
-        { error: 'Forbidden', details: 'Only administrators can create clubs' },
-        { status: 403 }
-      );
-    }
-
     // Parse request body
     let body;
     try {
@@ -290,10 +283,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user is an admin - admins get auto-approved clubs, students need approval
+    const userIsAdmin = await isAdmin(user.id);
+    const approvalStatus = userIsAdmin ? 'approved' : 'pending';
+
     // Use Command Pattern to create club
     const createCommand = new CreateClubCommand(
       { name: name.trim(), description: description?.trim() || null },
-      user.id
+      user.id,
+      approvalStatus
     );
 
     const club = await createCommand.execute();
@@ -313,8 +311,13 @@ export async function POST(request: NextRequest) {
       // The club was created successfully, just log the membership issue
     }
 
+    // Determine appropriate message based on approval status
+    const message = userIsAdmin
+      ? 'Club created successfully and is now visible to all users'
+      : 'Club created successfully and is pending admin approval';
+
     return NextResponse.json(
-      { club, message: 'Club created successfully' },
+      { club, message, requiresApproval: !userIsAdmin },
       { status: 201 }
     );
 

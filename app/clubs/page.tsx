@@ -27,7 +27,7 @@ export default async function ClubsPage() {
             <SidebarTrigger />
             <h1 className="text-2xl font-bold">Clubs</h1>
           </div>
-          {userIsAdmin && (
+          {isAuthenticated && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Link href="/clubs/create">
@@ -38,7 +38,7 @@ export default async function ClubsPage() {
                 </Link>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Create a new club (admin only)</p>
+                <p>Create a new club{userIsAdmin ? " (will be auto-approved)" : " (requires admin approval)"}</p>
               </TooltipContent>
             </Tooltip>
           )}

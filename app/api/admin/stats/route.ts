@@ -93,14 +93,26 @@ export async function GET(request: NextRequest) {
           entity_type,
           entity_id,
           details,
-          created_at,
-          admin:admin_id (
-            email
-          )
+          created_at
         `)
         .order('created_at', { ascending: false })
         .limit(10)
-        .then((res) => res.data || []),
+        .then(async (res) => {
+          if (!res.data) return [];
+          // Fetch admin emails separately
+          const adminIds = [...new Set(res.data.map(log => log.admin_id))];
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, email')
+            .in('id', adminIds);
+
+          const profileMap = new Map(profiles?.map(p => [p.id, p.email]) || []);
+
+          return res.data.map(log => ({
+            ...log,
+            admin_email: profileMap.get(log.admin_id) || 'Unknown'
+          }));
+        }),
     ]);
 
     // Get flags by status breakdown
@@ -144,11 +156,11 @@ export async function GET(request: NextRequest) {
         .then((res) => res.count || 0),
     ]);
 
-    // Format recent activity
+    // Format recent activity (already has admin_email from the query)
     const recentActivity = recentModerationLogs.map((log: any) => ({
       id: log.id,
       admin_id: log.admin_id,
-      admin_email: log.admin?.email || 'Unknown',
+      admin_email: log.admin_email,
       action: log.action,
       entity_type: log.entity_type,
       entity_id: log.entity_id,

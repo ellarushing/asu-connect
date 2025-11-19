@@ -1,8 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { AppSidebar } from '@/components/app-sidebar';
-import { SidebarProvider, SidebarTrigger } from '@/components/ui/sidebar';
+import { SidebarTrigger } from '@/components/ui/sidebar';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -223,45 +222,40 @@ export default function AdminLogsPage() {
 
   if (loading && logs.length === 0) {
     return (
-      <SidebarProvider>
-        <AppSidebar />
-        <main className="flex-1 w-full">
-          <div className="flex items-center gap-4 p-6 border-b">
-            <SidebarTrigger />
-            <h1 className="text-3xl font-bold">Moderation Logs</h1>
-          </div>
+      <main className="flex-1 w-full">
+        <div className="flex items-center gap-4 p-6 border-b">
+          <SidebarTrigger />
+          <h1 className="text-3xl font-bold">Moderation Logs</h1>
+        </div>
 
-          <div className="p-6 max-w-7xl mx-auto space-y-6">
-            <Card>
-              <CardHeader>
-                <Skeleton className="h-6 w-32 mb-2" />
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <Skeleton className="h-10 w-full" />
-                  <Skeleton className="h-10 w-full" />
-                </div>
-              </CardContent>
-            </Card>
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Card key={i}>
-                  <CardContent className="pt-6">
-                    <Skeleton className="h-20 w-full" />
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+        <div className="p-6 max-w-7xl mx-auto space-y-6">
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32 mb-2" />
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
+            </CardContent>
+          </Card>
+          <div className="space-y-4">
+            {[...Array(5)].map((_, i) => (
+              <Card key={i}>
+                <CardContent className="pt-6">
+                  <Skeleton className="h-20 w-full" />
+                </CardContent>
+              </Card>
+            ))}
           </div>
-        </main>
-      </SidebarProvider>
+        </div>
+      </main>
     );
   }
 
   return (
-    <SidebarProvider>
-      <AppSidebar />
-      <main className="flex-1 w-full">
+    <main className="flex-1 w-full">
         <div className="flex items-center justify-between gap-4 p-6 border-b">
           <div className="flex items-center gap-2">
             <SidebarTrigger />
@@ -568,6 +562,5 @@ export default function AdminLogsPage() {
           </DialogContent>
         </Dialog>
       </main>
-    </SidebarProvider>
   );
 }
