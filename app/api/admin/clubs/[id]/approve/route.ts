@@ -20,7 +20,7 @@ export async function POST(
 
     const supabase = await createClient();
 
-    // Check if club exists and get current status
+    // Check if club exists and get current status (without join to avoid foreign key issues)
     const { data: club, error: clubError } = await supabase
       .from('clubs')
       .select(`
@@ -28,11 +28,7 @@ export async function POST(
         name,
         description,
         approval_status,
-        created_by,
-        creator:created_by (
-          id,
-          email
-        )
+        created_by
       `)
       .eq('id', id)
       .single();
@@ -43,6 +39,13 @@ export async function POST(
         { status: 404 }
       );
     }
+
+    // Fetch creator profile separately to avoid foreign key issues
+    const { data: creatorProfile } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .eq('id', club.created_by)
+      .single();
 
     // Check if club is already approved
     if (club.approval_status === 'approved') {
@@ -94,7 +97,7 @@ export async function POST(
         club_name: club.name,
         previous_status: club.approval_status,
         creator_id: club.created_by,
-        creator_email: club.creator?.email,
+        creator_email: creatorProfile?.email || null,
       }
     );
 

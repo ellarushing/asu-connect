@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
     const offset = parseInt(searchParams.get('offset') || '0');
 
-    // Fetch pending clubs with creator information
+    // Fetch pending clubs (without join to avoid foreign key issues)
     const { data: pendingClubs, error: clubsError } = await supabase
       .from('clubs')
       .select(`
@@ -34,11 +34,7 @@ export async function GET(request: NextRequest) {
         approval_status,
         approved_by,
         approved_at,
-        rejection_reason,
-        creator:created_by (
-          id,
-          email
-        )
+        rejection_reason
       `)
       .eq('approval_status', 'pending')
       .order('created_at', { ascending: false })
@@ -62,13 +58,23 @@ export async function GET(request: NextRequest) {
       console.error('Error counting pending clubs:', countError);
     }
 
+    // Fetch creator profiles separately to avoid foreign key issues
+    const creatorIds = [...new Set((pendingClubs || []).map((club: any) => club.created_by))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', creatorIds);
+
+    // Create a map for quick lookup
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
     // Format the response
     const formattedClubs = pendingClubs?.map((club: any) => ({
       id: club.id,
       name: club.name,
       description: club.description,
       created_by: club.created_by,
-      creator_email: club.creator?.email || null,
+      creator_email: profileMap.get(club.created_by)?.email || null,
       created_at: club.created_at,
       updated_at: club.updated_at,
       approval_status: club.approval_status,

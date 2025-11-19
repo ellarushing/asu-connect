@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
-import { isAdmin } from '@/lib/auth/admin';
+import { isAdmin, canCreateClubs } from '@/lib/auth/admin';
 
 // ============================================================================
 // TYPES
@@ -283,7 +283,19 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is an admin - admins get auto-approved clubs, students need approval
+    // Check if user can create clubs (must be student leader or admin)
+    const canCreate = await canCreateClubs(user.id);
+    if (!canCreate) {
+      return NextResponse.json(
+        {
+          error: 'Forbidden',
+          details: 'Only student leaders and admins can create clubs. Please contact an administrator to become a student leader.'
+        },
+        { status: 403 }
+      );
+    }
+
+    // Check if user is an admin - admins get auto-approved clubs, student leaders need approval
     const userIsAdmin = await isAdmin(user.id);
     const approvalStatus = userIsAdmin ? 'approved' : 'pending';
 
