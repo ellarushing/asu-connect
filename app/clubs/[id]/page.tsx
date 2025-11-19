@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Flag } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { ArrowLeft, Flag, Clock, CheckCircle, XCircle, AlertTriangle } from 'lucide-react';
 import { ClubMembershipRequests } from '@/components/club-membership-requests';
 import { ClubMembersList } from '@/components/club-members-list';
 import { ClubFlagDialog } from '@/components/club-flag-dialog';
@@ -29,6 +30,8 @@ interface Club {
   created_by: string;
   created_at: string;
   updated_at: string;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
 }
 
 interface Event {
@@ -278,6 +281,24 @@ export default function ClubDetailPage() {
                         {isCreator && (
                           <Badge variant="success">Creator</Badge>
                         )}
+                        {club.approval_status === 'pending' && (
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Clock className="size-3" />
+                            Pending Approval
+                          </Badge>
+                        )}
+                        {club.approval_status === 'approved' && (
+                          <Badge variant="success" className="flex items-center gap-1">
+                            <CheckCircle className="size-3" />
+                            Approved
+                          </Badge>
+                        )}
+                        {club.approval_status === 'rejected' && (
+                          <Badge variant="destructive" className="flex items-center gap-1">
+                            <XCircle className="size-3" />
+                            Rejected
+                          </Badge>
+                        )}
                       </div>
                       <CardDescription>
                         Created on {formatDate(club.created_at)}
@@ -329,6 +350,28 @@ export default function ClubDetailPage() {
                   </CardContent>
                 )}
               </Card>
+
+              {/* Rejection Alert (Creator Only) */}
+              {isCreator && club.approval_status === 'rejected' && (
+                <Alert variant="destructive" className="mb-6">
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Your club was rejected</AlertTitle>
+                  <AlertDescription>
+                    {club.rejection_reason || 'No reason provided.'}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Pending Alert (Creator Only) */}
+              {isCreator && club.approval_status === 'pending' && (
+                <Alert className="mb-6">
+                  <Clock className="h-4 w-4" />
+                  <AlertTitle>Awaiting Admin Approval</AlertTitle>
+                  <AlertDescription>
+                    Your club is pending review by an administrator. You'll be notified once it's approved.
+                  </AlertDescription>
+                </Alert>
+              )}
 
               {/* Pending Requests Section (Creator Only) */}
               {isCreator && (

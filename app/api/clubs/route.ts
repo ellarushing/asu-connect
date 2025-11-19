@@ -133,12 +133,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Fetch only approved clubs for public view
-    // Rejected and pending clubs are not shown to regular users
+    // Fetch clubs - RLS policy handles filtering:
+    // - Shows approved clubs to everyone
+    // - Shows pending/rejected clubs to their creators
+    // - Shows all clubs to admins
     const { data: clubs, error: clubsError } = await supabase
       .from('clubs')
-      .select('*')
-      .eq('approval_status', 'approved');
+      .select('*');
 
     if (clubsError) {
       console.error('Database error fetching clubs:', clubsError);
