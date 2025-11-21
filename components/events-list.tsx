@@ -16,8 +16,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronDown, Calendar, MapPin, Users } from "lucide-react";
+import { ChevronDown, Calendar, MapPin, Users, Search } from "lucide-react";
 
 interface Event {
   id: string;
@@ -42,6 +43,7 @@ interface ApiResponse {
 type SortOption = "date" | "name" | "popularity";
 type CategoryOption = "all" | "Academic" | "Social" | "Sports" | "Arts" | "Career" | "Community Service" | "Other";
 type PricingOption = "all" | "free" | "paid";
+type DateRangeOption = "all" | "today" | "this-week" | "this-month" | "next-7-days" | "next-30-days";
 
 export function EventsList() {
   const formatDate = (dateString: string) => {
@@ -59,11 +61,77 @@ export function EventsList() {
     }
   };
   const [events, setEvents] = useState<Event[]>([]);
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortOption>("date");
   const [category, setCategory] = useState<CategoryOption>("all");
   const [pricing, setPricing] = useState<PricingOption>("all");
+  const [dateRange, setDateRange] = useState<DateRangeOption>("all");
+  const [locationSearch, setLocationSearch] = useState<string>("");
+
+  // Date range filter helper function
+  const filterByDateRange = (event: Event, range: DateRangeOption): boolean => {
+    if (range === "all") return true;
+
+    const now = new Date();
+    const eventDate = new Date(event.event_date);
+
+    // Remove time component for accurate date comparisons
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const eventDay = new Date(eventDate.getFullYear(), eventDate.getMonth(), eventDate.getDate());
+
+    switch (range) {
+      case "today":
+        return eventDay.getTime() === today.getTime();
+
+      case "this-week": {
+        const endOfWeek = new Date(today);
+        endOfWeek.setDate(today.getDate() + (6 - today.getDay())); // End of week (Saturday)
+        return eventDay >= today && eventDay <= endOfWeek;
+      }
+
+      case "this-month": {
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return eventDay >= today && eventDay <= endOfMonth;
+      }
+
+      case "next-7-days": {
+        const next7Days = new Date(today);
+        next7Days.setDate(today.getDate() + 7);
+        return eventDay >= today && eventDay <= next7Days;
+      }
+
+      case "next-30-days": {
+        const next30Days = new Date(today);
+        next30Days.setDate(today.getDate() + 30);
+        return eventDay >= today && eventDay <= next30Days;
+      }
+
+      default:
+        return true;
+    }
+  };
+
+  // Apply client-side filters for date range and location
+  useEffect(() => {
+    let filtered = [...events];
+
+    // Filter by date range
+    if (dateRange !== "all") {
+      filtered = filtered.filter((event) => filterByDateRange(event, dateRange));
+    }
+
+    // Filter by location
+    if (locationSearch.trim()) {
+      const searchLower = locationSearch.toLowerCase().trim();
+      filtered = filtered.filter((event) =>
+        event.location?.toLowerCase().includes(searchLower)
+      );
+    }
+
+    setFilteredEvents(filtered);
+  }, [events, dateRange, locationSearch]);
 
   // Fetch events from API
   const fetchEvents = async (sortOption: SortOption, categoryOption: CategoryOption, pricingOption: PricingOption) => {
@@ -131,93 +199,151 @@ export function EventsList() {
   return (
     <>
       {/* Filters */}
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
-        <div className="flex flex-col sm:flex-row gap-3">
-          {/* Category filter */}
+      <div className="mb-6 space-y-4">
+        {/* Top Row: Category, Date Range, Pricing, Sort */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div className="flex flex-col sm:flex-row gap-3 flex-wrap">
+            {/* Category filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  Category: {category === "all" ? "All" : category}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => handleCategoryChange("all")}>
+                  All Categories
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Academic")}>
+                  Academic
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Social")}>
+                  Social
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Sports")}>
+                  Sports
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Arts")}>
+                  Arts
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Career")}>
+                  Career
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Community Service")}>
+                  Community Service
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleCategoryChange("Other")}>
+                  Other
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Date Range filter */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="gap-2">
+                  <Calendar className="h-4 w-4" />
+                  {dateRange === "all" && "All Dates"}
+                  {dateRange === "today" && "Today"}
+                  {dateRange === "this-week" && "This Week"}
+                  {dateRange === "this-month" && "This Month"}
+                  {dateRange === "next-7-days" && "Next 7 Days"}
+                  {dateRange === "next-30-days" && "Next 30 Days"}
+                  <ChevronDown className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setDateRange("all")}>
+                  All Dates
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDateRange("today")}>
+                  Today
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDateRange("this-week")}>
+                  This Week
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDateRange("this-month")}>
+                  This Month
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDateRange("next-7-days")}>
+                  Next 7 Days
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDateRange("next-30-days")}>
+                  Next 30 Days
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Pricing filter */}
+            <div className="flex gap-2 border rounded-md p-1">
+              <Button
+                variant={pricing === "all" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handlePricingChange("all")}
+                className="flex-1 sm:flex-none"
+              >
+                All
+              </Button>
+              <Button
+                variant={pricing === "free" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handlePricingChange("free")}
+                className="flex-1 sm:flex-none"
+              >
+                Free
+              </Button>
+              <Button
+                variant={pricing === "paid" ? "default" : "ghost"}
+                size="sm"
+                onClick={() => handlePricingChange("paid")}
+                className="flex-1 sm:flex-none"
+              >
+                Paid
+              </Button>
+            </div>
+          </div>
+
+          {/* Sort dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-2">
-                Category: {category === "all" ? "All" : category}
+                Sort by {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
                 <ChevronDown className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => handleCategoryChange("all")}>
-                All Categories
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleSortChange("date")}>
+                Date
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Academic")}>
-                Academic
+              <DropdownMenuItem onClick={() => handleSortChange("name")}>
+                Name
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Social")}>
-                Social
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Sports")}>
-                Sports
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Arts")}>
-                Arts
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Career")}>
-                Career
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Community Service")}>
-                Community Service
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => handleCategoryChange("Other")}>
-                Other
+              <DropdownMenuItem onClick={() => handleSortChange("popularity")}>
+                Popularity
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
-
-          {/* Pricing filter */}
-          <div className="flex gap-2 border rounded-md p-1">
-            <Button
-              variant={pricing === "all" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handlePricingChange("all")}
-              className="flex-1 sm:flex-none"
-            >
-              All
-            </Button>
-            <Button
-              variant={pricing === "free" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handlePricingChange("free")}
-              className="flex-1 sm:flex-none"
-            >
-              Free
-            </Button>
-            <Button
-              variant={pricing === "paid" ? "default" : "ghost"}
-              size="sm"
-              onClick={() => handlePricingChange("paid")}
-              className="flex-1 sm:flex-none"
-            >
-              Paid
-            </Button>
-          </div>
         </div>
 
-        {/* Sort dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2">
-              Sort by {sortBy.charAt(0).toUpperCase() + sortBy.slice(1)}
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => handleSortChange("date")}>
-              Date
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSortChange("name")}>
-              Name
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleSortChange("popularity")}>
-              Popularity
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Bottom Row: Location Search */}
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+          <div className="relative w-full sm:w-96">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="Search by location..."
+              value={locationSearch}
+              onChange={(e) => setLocationSearch(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          {(dateRange !== "all" || locationSearch || category !== "all" || pricing !== "all") && (
+            <div className="text-sm text-muted-foreground">
+              Showing {filteredEvents.length} of {events.length} events
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Loading state */}
@@ -267,10 +393,30 @@ export function EventsList() {
         </div>
       )}
 
+      {/* No results after filtering */}
+      {!loading && events.length > 0 && filteredEvents.length === 0 && (
+        <div className="rounded-lg border-2 border-dashed p-12 text-center">
+          <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+          <h2 className="text-xl font-semibold mb-2">No events match your filters</h2>
+          <p className="text-muted-foreground mb-4">
+            Try adjusting your filters to see more events.
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setDateRange("all");
+              setLocationSearch("");
+            }}
+          >
+            Clear Filters
+          </Button>
+        </div>
+      )}
+
       {/* Events grid */}
-      {!loading && events.length > 0 && (
+      {!loading && filteredEvents.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {events.map((event) => (
+          {filteredEvents.map((event) => (
             <Link key={event.id} href={`/events/${event.id}`}>
               <Card className="h-full cursor-pointer transition-all hover:shadow-lg hover:border-primary/50">
                 <CardHeader>

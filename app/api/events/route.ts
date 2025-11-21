@@ -202,6 +202,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Verify club is approved (not rejected or pending)
+    const { data: club } = await supabase
+      .from('clubs')
+      .select('approval_status')
+      .eq('id', club_id)
+      .single();
+
+    if (!club || club.approval_status !== 'approved') {
+      return NextResponse.json(
+        {
+          error: 'Forbidden: Cannot create events for clubs that are not approved',
+          details: club?.approval_status === 'rejected'
+            ? 'This club has been rejected by an administrator'
+            : 'This club is pending admin approval'
+        },
+        { status: 403 }
+      );
+    }
+
     // Insert event into database
     const { data: newEvent, error: insertError } = await supabase
       .from('events')

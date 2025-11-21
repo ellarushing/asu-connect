@@ -196,6 +196,35 @@ export interface Database {
           updated_at?: string;
         };
       };
+      club_announcements: {
+        Row: {
+          id: string;
+          club_id: string;
+          created_by: string;
+          title: string;
+          content: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          club_id: string;
+          created_by: string;
+          title: string;
+          content: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          club_id?: string;
+          created_by?: string;
+          title?: string;
+          content?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+      };
     };
   };
 }
@@ -207,6 +236,7 @@ export type ClubMember = Database['public']['Tables']['club_members']['Row'];
 export type EventRegistration = Database['public']['Tables']['event_registrations']['Row'];
 export type EventFlag = Database['public']['Tables']['event_flags']['Row'];
 export type ClubFlag = Database['public']['Tables']['club_flags']['Row'];
+export type ClubAnnouncement = Database['public']['Tables']['club_announcements']['Row'];
 
 export type ClubInsert = Database['public']['Tables']['clubs']['Insert'];
 export type EventInsert = Database['public']['Tables']['events']['Insert'];
@@ -214,6 +244,7 @@ export type ClubMemberInsert = Database['public']['Tables']['club_members']['Ins
 export type EventRegistrationInsert = Database['public']['Tables']['event_registrations']['Insert'];
 export type EventFlagInsert = Database['public']['Tables']['event_flags']['Insert'];
 export type ClubFlagInsert = Database['public']['Tables']['club_flags']['Insert'];
+export type ClubAnnouncementInsert = Database['public']['Tables']['club_announcements']['Insert'];
 
 export type ClubUpdate = Database['public']['Tables']['clubs']['Update'];
 export type EventUpdate = Database['public']['Tables']['events']['Update'];
@@ -221,6 +252,7 @@ export type ClubMemberUpdate = Database['public']['Tables']['club_members']['Upd
 export type EventRegistrationUpdate = Database['public']['Tables']['event_registrations']['Update'];
 export type EventFlagUpdate = Database['public']['Tables']['event_flags']['Update'];
 export type ClubFlagUpdate = Database['public']['Tables']['club_flags']['Update'];
+export type ClubAnnouncementUpdate = Database['public']['Tables']['club_announcements']['Update'];
 
 // Role types
 export type MemberRole = 'admin' | 'member';

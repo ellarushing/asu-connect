@@ -19,6 +19,7 @@ import { ClubMembershipRequests } from '@/components/club-membership-requests';
 import { ClubMembersList } from '@/components/club-members-list';
 import { ClubFlagDialog } from '@/components/club-flag-dialog';
 import { ClubFlagsList } from '@/components/club-flags-list';
+import { ClubAnnouncementsList } from '@/components/club-announcements-list';
 import { createClient } from '@/utils/supabase/client';
 import { toast } from 'sonner';
 import { Toaster } from '@/components/ui/toast';
@@ -395,6 +396,11 @@ export default function ClubDetailPage() {
               {/* Members List Section */}
               <div className="mb-6">
                 <ClubMembersList clubId={clubId} />
+              </div>
+
+              {/* Announcements Section */}
+              <div className="mb-6">
+                <ClubAnnouncementsList clubId={clubId} />
               </div>
 
               {/* Events Section */}

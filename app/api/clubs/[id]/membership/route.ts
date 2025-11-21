@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@/utils/supabase/server';
+import { isAdmin } from '@/lib/auth/admin';
 
 interface RouteParams {
   params: Promise<{
@@ -104,14 +105,18 @@ export async function POST(
       );
     }
 
-    // Add user to club with pending status
+    // Check if user is admin - admins get auto-approved
+    const userIsAdmin = await isAdmin(user.id);
+    const membershipStatus = userIsAdmin ? 'approved' : 'pending';
+
+    // Add user to club with appropriate status
     const { data: membership, error: insertError } = await supabase
       .from('club_members')
       .insert({
         club_id: clubId,
         user_id: user.id,
         role: 'member',
-        status: 'pending',
+        status: membershipStatus,
       })
       .select('role, status')
       .single();
@@ -123,7 +128,9 @@ export async function POST(
     return NextResponse.json(
       {
         membership,
-        message: 'Membership request submitted successfully',
+        message: userIsAdmin
+          ? 'Joined club successfully'
+          : 'Membership request submitted successfully',
       },
       { status: 201 }
     );

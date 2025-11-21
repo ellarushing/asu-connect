@@ -75,7 +75,8 @@ export async function GET(request: NextRequest) {
             description,
             created_by,
             created_at,
-            updated_at
+            updated_at,
+            approval_status
           )
         `)
         .eq('user_id', user.id)
@@ -90,10 +91,10 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      // Extract clubs from the join result
+      // Extract clubs from the join result and filter by approved clubs only
       clubs = (adminMemberships || [])
         .map((membership: any) => membership.clubs)
-        .filter((club: any) => club !== null);
+        .filter((club: any) => club !== null && club.approval_status === 'approved');
 
       // Sort by name
       clubs.sort((a, b) => a.name.localeCompare(b.name));
