@@ -17,80 +17,7 @@ import {
   XCircle,
   Clock,
 } from 'lucide-react';
-
-interface AdminStats {
-  summary: {
-    total_pending_items: number;
-    pending_flags: number;
-    pending_clubs: number;
-    requires_attention: boolean;
-  };
-  flags: {
-    event_flags: {
-      total: number;
-      pending: number;
-      reviewed: number;
-      resolved: number;
-      dismissed: number;
-    };
-    club_flags: {
-      total: number;
-      pending: number;
-      reviewed: number;
-      resolved: number;
-      dismissed: number;
-    };
-    combined: {
-      total: number;
-      pending: number;
-      reviewed: number;
-      resolved: number;
-      dismissed: number;
-    };
-  };
-  clubs: {
-    total: number;
-    pending: number;
-    approved: number;
-    rejected: number;
-    approval_rate: string;
-  };
-  recent_activity: Array<{
-    id: string;
-    admin_id: string;
-    admin_email: string;
-    action: string;
-    entity_type: string;
-    entity_id: string;
-    details: Record<string, unknown> | null;
-    created_at: string;
-  }>;
-  fetched_at: string;
-}
-
-async function getAdminStats(): Promise<AdminStats | null> {
-  try {
-    const response = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/admin/stats`,
-      {
-        cache: 'no-store',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
-    );
-
-    if (!response.ok) {
-      console.error('Failed to fetch admin stats:', response.statusText);
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching admin stats:', error);
-    return null;
-  }
-}
+import { getAdminStats, type AdminStats } from '@/lib/admin/stats';
 
 function formatActionName(action: string): string {
   return action
@@ -112,9 +39,20 @@ function formatTimeAgo(dateString: string): string {
 }
 
 export default async function AdminDashboardPage() {
-  const stats = await getAdminStats();
+  // Fetch stats directly from the database using the shared function
+  // This avoids the port mismatch issue with fetch() calls
+  let stats: AdminStats | null = null;
+  let error: string | null = null;
 
-  if (!stats) {
+  try {
+    stats = await getAdminStats();
+  } catch (err) {
+    console.error('Error loading admin stats:', err);
+    error = err instanceof Error ? err.message : 'Unknown error';
+  }
+
+  // Handle error state
+  if (!stats || error) {
     return (
       <div className="p-6 md:p-8 max-w-7xl mx-auto">
         <Card className="border-destructive/50 bg-destructive/5">
@@ -125,7 +63,7 @@ export default async function AdminDashboardPage() {
                 Failed to load dashboard statistics
               </p>
               <p className="text-xs text-destructive/75">
-                Please try refreshing the page
+                {error || 'Please try refreshing the page'}
               </p>
             </div>
           </CardContent>

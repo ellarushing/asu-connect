@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { ClubCreateForm } from '@/components/club-create-form';
 import { ArrowLeft } from 'lucide-react';
 import { createClient } from '@/utils/supabase/server';
-import { isAdmin } from '@/lib/auth/admin';
+import { canCreateClubs } from '@/lib/auth/admin';
 
 export default async function CreateClubPage() {
   const supabase = await createClient();
@@ -17,11 +17,10 @@ export default async function CreateClubPage() {
     redirect('/login?message=You must be logged in to access this page');
   }
 
-  // Check if user is an admin
-  const userIsAdmin = await isAdmin(data.user.id);
-
-  if (!userIsAdmin) {
-    redirect('/clubs?error=Only administrators can create clubs');
+  // Check if user can create clubs (must be student leader or admin)
+  const hasPermission = await canCreateClubs(data.user.id);
+  if (!hasPermission) {
+    redirect('/clubs?message=Only student leaders and admins can create clubs');
   }
 
   return (

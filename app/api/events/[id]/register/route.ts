@@ -26,10 +26,16 @@ export async function POST(
       );
     }
 
-    // Check if event exists
+    // Check if event exists and its club is approved
     const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id')
+      .select(`
+        id,
+        club_id,
+        clubs:club_id (
+          approval_status
+        )
+      `)
       .eq('id', id)
       .single();
 
@@ -37,6 +43,19 @@ export async function POST(
       return NextResponse.json(
         { error: 'Event not found' },
         { status: 404 }
+      );
+    }
+
+    // Verify the event's club is approved
+    if (!event.clubs || event.clubs.approval_status !== 'approved') {
+      return NextResponse.json(
+        {
+          error: 'Cannot register for events from clubs that are not approved',
+          details: event.clubs?.approval_status === 'rejected'
+            ? 'This club has been rejected by an administrator'
+            : 'This club is pending admin approval'
+        },
+        { status: 403 }
       );
     }
 

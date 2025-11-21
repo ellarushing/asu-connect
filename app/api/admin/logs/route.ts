@@ -33,22 +33,10 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Build the query
+    // Build the query - fetch logs without join first
     let query = supabase
       .from('moderation_logs')
-      .select(`
-        id,
-        admin_id,
-        action,
-        entity_type,
-        entity_id,
-        details,
-        created_at,
-        admin:admin_id (
-          email,
-          full_name
-        )
-      `, { count: 'exact' });
+      .select('*', { count: 'exact' });
 
     // Apply filters if provided
     if (action) {
@@ -72,18 +60,30 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Fetch admin profiles separately
+    const adminIds = [...new Set((logs || []).map(log => log.admin_id))];
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', adminIds);
+
+    const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
     // Format the logs with admin info
-    const formattedLogs = (logs || []).map((log: any) => ({
-      id: log.id,
-      admin_id: log.admin_id,
-      admin_email: log.admin?.email || null,
-      admin_name: log.admin?.full_name || null,
-      action: log.action,
-      entity_type: log.entity_type,
-      entity_id: log.entity_id,
-      details: log.details,
-      created_at: log.created_at,
-    }));
+    const formattedLogs = (logs || []).map((log: any) => {
+      const profile = profileMap.get(log.admin_id);
+      return {
+        id: log.id,
+        admin_id: log.admin_id,
+        admin_email: profile?.email || null,
+        admin_name: profile?.full_name || null,
+        action: log.action,
+        entity_type: log.entity_type,
+        entity_id: log.entity_id,
+        details: log.details,
+        created_at: log.created_at,
+      };
+    });
 
     return NextResponse.json(
       {

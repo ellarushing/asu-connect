@@ -17,7 +17,8 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, ChevronDown } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Users, ChevronDown, Clock, CheckCircle, XCircle } from "lucide-react";
 
 interface Club {
   id: string;
@@ -25,6 +26,9 @@ interface Club {
   description: string | null;
   created_at: string;
   member_count: number;
+  approval_status: 'pending' | 'approved' | 'rejected';
+  rejection_reason?: string | null;
+  created_by: string;
 }
 
 type SortOption = "name" | "newest" | "oldest";
@@ -160,7 +164,27 @@ export function ClubsList() {
             <Link key={club.id} href={`/clubs/${club.id}`}>
               <Card className="h-full transition-all duration-200 hover:shadow-lg hover:ring-1 hover:ring-primary/20 cursor-pointer">
                 <CardHeader>
-                  <CardTitle className="line-clamp-2">{club.name}</CardTitle>
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <CardTitle className="line-clamp-2 flex-1">{club.name}</CardTitle>
+                    {club.approval_status === 'pending' && (
+                      <Badge variant="outline" className="flex items-center gap-1 shrink-0">
+                        <Clock className="size-3" />
+                        Pending
+                      </Badge>
+                    )}
+                    {club.approval_status === 'rejected' && (
+                      <Badge variant="destructive" className="flex items-center gap-1 shrink-0">
+                        <XCircle className="size-3" />
+                        Rejected
+                      </Badge>
+                    )}
+                    {club.approval_status === 'approved' && (
+                      <Badge variant="success" className="flex items-center gap-1 shrink-0">
+                        <CheckCircle className="size-3" />
+                        Approved
+                      </Badge>
+                    )}
+                  </div>
                   <CardDescription className="line-clamp-2">
                     {club.description || "No description"}
                   </CardDescription>

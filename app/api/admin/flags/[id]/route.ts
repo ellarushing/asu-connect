@@ -18,8 +18,8 @@ export async function GET(
 
     const supabase = await createClient();
 
-    // Try to find the flag in event_flags first
-    const { data: eventFlag, error: eventFlagError } = await supabase
+    // Try to find the flag in event_flags first (without join to avoid foreign key issues)
+    const { data: eventFlag, error: eventFlagError} = await supabase
       .from('event_flags')
       .select(`
         *,
@@ -30,22 +30,21 @@ export async function GET(
           event_date,
           location,
           created_by
-        ),
-        reporter:profiles!user_id (
-          id,
-          email,
-          full_name
-        ),
-        reviewer:profiles!reviewed_by (
-          id,
-          email,
-          full_name
         )
       `)
       .eq('id', id)
       .single();
 
     if (eventFlag && !eventFlagError) {
+      // Fetch reporter and reviewer profiles separately to avoid foreign key issues
+      const profileIds = [eventFlag.user_id, eventFlag.reviewed_by].filter(Boolean);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', profileIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
       return NextResponse.json(
         {
           flag: {
@@ -54,12 +53,12 @@ export async function GET(
             entity_type: 'event',
             entity: eventFlag.event,
             user_id: eventFlag.user_id,
-            reporter: eventFlag.reporter,
+            reporter: profileMap.get(eventFlag.user_id) || null,
             reason: eventFlag.reason,
             details: eventFlag.details,
             status: eventFlag.status,
             reviewed_by: eventFlag.reviewed_by,
-            reviewer: eventFlag.reviewer,
+            reviewer: eventFlag.reviewed_by ? profileMap.get(eventFlag.reviewed_by) || null : null,
             reviewed_at: eventFlag.reviewed_at,
             created_at: eventFlag.created_at,
             updated_at: eventFlag.updated_at,
@@ -69,7 +68,7 @@ export async function GET(
       );
     }
 
-    // Try to find the flag in club_flags
+    // Try to find the flag in club_flags (without join to avoid foreign key issues)
     const { data: clubFlag, error: clubFlagError } = await supabase
       .from('club_flags')
       .select(`
@@ -80,22 +79,21 @@ export async function GET(
           description,
           created_by,
           approval_status
-        ),
-        reporter:profiles!user_id (
-          id,
-          email,
-          full_name
-        ),
-        reviewer:profiles!reviewed_by (
-          id,
-          email,
-          full_name
         )
       `)
       .eq('id', id)
       .single();
 
     if (clubFlag && !clubFlagError) {
+      // Fetch reporter and reviewer profiles separately to avoid foreign key issues
+      const profileIds = [clubFlag.user_id, clubFlag.reviewed_by].filter(Boolean);
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, email, full_name')
+        .in('id', profileIds);
+
+      const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
       return NextResponse.json(
         {
           flag: {
@@ -104,12 +102,12 @@ export async function GET(
             entity_type: 'club',
             entity: clubFlag.club,
             user_id: clubFlag.user_id,
-            reporter: clubFlag.reporter,
+            reporter: profileMap.get(clubFlag.user_id) || null,
             reason: clubFlag.reason,
             details: clubFlag.details,
             status: clubFlag.status,
             reviewed_by: clubFlag.reviewed_by,
-            reviewer: clubFlag.reviewer,
+            reviewer: clubFlag.reviewed_by ? profileMap.get(clubFlag.reviewed_by) || null : null,
             reviewed_at: clubFlag.reviewed_at,
             created_at: clubFlag.created_at,
             updated_at: clubFlag.updated_at,
@@ -168,7 +166,7 @@ export async function PATCH(
     }
 
     // Try to update event flag first
-    const { data: eventFlag, error: eventFlagError } = await supabase
+    const { data: eventFlagUpdate, error: eventFlagError } = await supabase
       .from('event_flags')
       .update({
         status,
@@ -177,16 +175,19 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select(`
-        *,
-        event:events (
-          id,
-          title
-        )
-      `)
-      .single();
+      .select();
 
-    if (eventFlag && !eventFlagError) {
+    // Check if update succeeded (returns array, not single)
+    if (eventFlagUpdate && eventFlagUpdate.length > 0 && !eventFlagError) {
+      const eventFlag = eventFlagUpdate[0];
+
+      // Fetch event details separately
+      const { data: event } = await supabase
+        .from('events')
+        .select('id, title')
+        .eq('id', eventFlag.event_id)
+        .single();
+
       // Log moderation action
       const action = status === 'resolved' ? ModerationAction.RESOLVE_FLAG : ModerationAction.DISMISS_FLAG;
       await logModerationAction(
@@ -197,7 +198,7 @@ export async function PATCH(
         {
           flag_type: 'event',
           entity_id: eventFlag.event_id,
-          entity_title: eventFlag.event?.title,
+          entity_title: event?.title || null,
           status,
           notes,
         }
@@ -205,15 +206,19 @@ export async function PATCH(
 
       return NextResponse.json(
         {
-          flag: eventFlag,
+          flag: { ...eventFlag, event },
           message: 'Event flag status updated successfully',
         },
         { status: 200 }
       );
     }
 
+    if (eventFlagError) {
+      console.error('Event flag update error:', eventFlagError);
+    }
+
     // Try to update club flag
-    const { data: clubFlag, error: clubFlagError } = await supabase
+    const { data: clubFlagUpdate, error: clubFlagError } = await supabase
       .from('club_flags')
       .update({
         status,
@@ -222,16 +227,19 @@ export async function PATCH(
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .select(`
-        *,
-        club:clubs (
-          id,
-          name
-        )
-      `)
-      .single();
+      .select();
 
-    if (clubFlag && !clubFlagError) {
+    // Check if update succeeded (returns array, not single)
+    if (clubFlagUpdate && clubFlagUpdate.length > 0 && !clubFlagError) {
+      const clubFlag = clubFlagUpdate[0];
+
+      // Fetch club details separately
+      const { data: club } = await supabase
+        .from('clubs')
+        .select('id, name')
+        .eq('id', clubFlag.club_id)
+        .single();
+
       // Log moderation action
       const action = status === 'resolved' ? ModerationAction.RESOLVE_FLAG : ModerationAction.DISMISS_FLAG;
       await logModerationAction(
@@ -242,7 +250,7 @@ export async function PATCH(
         {
           flag_type: 'club',
           entity_id: clubFlag.club_id,
-          entity_name: clubFlag.club?.name,
+          entity_name: club?.name || null,
           status,
           notes,
         }
@@ -250,16 +258,20 @@ export async function PATCH(
 
       return NextResponse.json(
         {
-          flag: clubFlag,
+          flag: { ...clubFlag, club },
           message: 'Club flag status updated successfully',
         },
         { status: 200 }
       );
     }
 
+    if (clubFlagError) {
+      console.error('Club flag update error:', clubFlagError);
+    }
+
     // Flag not found in either table
     return NextResponse.json(
-      { error: 'Flag not found' },
+      { error: 'Flag not found', details: 'No flag exists with the provided ID' },
       { status: 404 }
     );
   } catch (error) {

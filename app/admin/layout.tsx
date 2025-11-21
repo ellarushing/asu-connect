@@ -22,6 +22,7 @@ import {
   ShieldCheck,
   ScrollText,
   AlertTriangle,
+  XCircle,
 } from 'lucide-react';
 
 // Admin navigation items
@@ -43,6 +44,12 @@ const adminMenuItems = [
     url: '/admin/clubs',
     icon: ShieldCheck,
     description: 'Approve or reject clubs',
+  },
+  {
+    title: 'Rejected Clubs',
+    url: '/admin/clubs/rejected',
+    icon: XCircle,
+    description: 'View and manage rejected clubs',
   },
   {
     title: 'Moderation Logs',

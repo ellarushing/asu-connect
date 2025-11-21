@@ -56,6 +56,15 @@ export enum ModerationAction {
 export type EntityType = 'club' | 'event' | 'flag' | 'user';
 
 /**
+ * User role types matching database enum
+ */
+export enum UserRole {
+  STUDENT = 'student',
+  STUDENT_LEADER = 'student_leader',
+  ADMIN = 'admin',
+}
+
+/**
  * Moderation log entry
  */
 export interface ModerationLog {
@@ -402,6 +411,125 @@ export async function checkAdminAccess(): Promise<boolean> {
     const admin = await getCurrentAdmin();
     return admin !== null;
   } catch (error) {
+    return false;
+  }
+}
+
+// ============================================================================
+// STUDENT LEADER ROLE FUNCTIONS
+// ============================================================================
+
+/**
+ * Get user's role from the database
+ *
+ * @param userId - The user's UUID
+ * @returns Promise<UserRole> - The user's role (defaults to STUDENT if not found)
+ *
+ * @example
+ * ```typescript
+ * const role = await getUserRole(user.id);
+ * if (role === UserRole.STUDENT_LEADER) {
+ *   // Allow club creation
+ * }
+ * ```
+ */
+export async function getUserRole(userId: string): Promise<UserRole> {
+  try {
+    const supabase = await createClient();
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+
+    if (error || !profile) {
+      console.error('Error fetching user role:', error);
+      return UserRole.STUDENT;
+    }
+
+    return (profile.role as UserRole) || UserRole.STUDENT;
+  } catch (error) {
+    console.error('Exception getting user role:', error);
+    return UserRole.STUDENT;
+  }
+}
+
+/**
+ * Check if a user is a student leader or admin
+ *
+ * @param userId - The user's UUID
+ * @returns Promise<boolean> - True if user is a student leader or admin
+ *
+ * @example
+ * ```typescript
+ * const canCreate = await isStudentLeader(user.id);
+ * if (!canCreate) {
+ *   return { error: 'Only student leaders can create clubs' };
+ * }
+ * ```
+ */
+export async function isStudentLeader(userId: string): Promise<boolean> {
+  try {
+    const role = await getUserRole(userId);
+    return role === UserRole.STUDENT_LEADER || role === UserRole.ADMIN;
+  } catch (error) {
+    console.error('Exception checking student leader status:', error);
+    return false;
+  }
+}
+
+/**
+ * Check if user can create clubs (student leader or admin)
+ *
+ * @param userId - The user's UUID
+ * @returns Promise<boolean> - True if user can create clubs
+ *
+ * @example
+ * ```typescript
+ * const canCreate = await canCreateClubs(user.id);
+ * ```
+ */
+export async function canCreateClubs(userId: string): Promise<boolean> {
+  return await isStudentLeader(userId);
+}
+
+/**
+ * Check if user can create events in a specific club
+ * Must be student leader/admin AND have admin role in the club
+ *
+ * @param userId - The user's UUID
+ * @param clubId - The club UUID
+ * @returns Promise<boolean> - True if user can create events in this club
+ *
+ * @example
+ * ```typescript
+ * const canCreate = await canCreateEvents(user.id, clubId);
+ * if (!canCreate) {
+ *   return { error: 'You must be a student leader and club admin' };
+ * }
+ * ```
+ */
+export async function canCreateEvents(userId: string, clubId: string): Promise<boolean> {
+  try {
+    // Must be student leader or admin
+    const hasLeaderRole = await isStudentLeader(userId);
+    if (!hasLeaderRole) {
+      return false;
+    }
+
+    // Must also be a club admin
+    const supabase = await createClient();
+    const { data: membership } = await supabase
+      .from('club_members')
+      .select('role, status')
+      .eq('club_id', clubId)
+      .eq('user_id', userId)
+      .single();
+
+    return membership?.role === 'admin' && membership?.status === 'approved';
+  } catch (error) {
+    console.error('Exception checking event creation permission:', error);
     return false;
   }
 }

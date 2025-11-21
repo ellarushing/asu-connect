@@ -14,11 +14,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
+import { AlertCircle, CheckCircle2 } from 'lucide-react';
 
 export function ClubCreateForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -72,8 +74,13 @@ export function ClubCreateForm() {
 
       const data = await response.json();
 
-      // Redirect to club page
-      router.push(`/clubs/${data.club.id}`);
+      // Show success message
+      setSuccess(data.message);
+
+      // Redirect to club page after a short delay
+      setTimeout(() => {
+        router.push(`/clubs/${data.club.id}`);
+      }, 2000);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -91,8 +98,16 @@ export function ClubCreateForm() {
       </CardHeader>
       <CardContent>
         {error && (
-          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-md">
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/30 rounded-md flex items-start gap-2">
+            <AlertCircle className="size-5 text-destructive shrink-0 mt-0.5" />
             <p className="text-destructive text-sm">{error}</p>
+          </div>
+        )}
+
+        {success && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-md flex items-start gap-2">
+            <CheckCircle2 className="size-5 text-green-600 shrink-0 mt-0.5" />
+            <p className="text-green-800 text-sm">{success}</p>
           </div>
         )}
 
